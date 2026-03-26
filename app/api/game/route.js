@@ -1,9 +1,6 @@
 /**
  * Single unified API route — all game operations in ONE serverless function.
- *
- * Why: Vercel spins up separate Lambda containers for each route file.
- * Putting everything here means polling (1 req/s) keeps THIS function warm
- * and all calls share the same in-memory store.
+ * State is persisted in Upstash Redis (if env vars set) or in-memory (local dev).
  */
 
 import { NextResponse } from "next/server";
@@ -19,7 +16,7 @@ function genRoomId() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
-// ─── GET /api/game?action=state&roomId=X&playerId=Y ───────────────────────────
+// ─── GET /api/game?roomId=X&playerId=Y ────────────────────────────────────────
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const roomId   = searchParams.get("roomId");
@@ -27,7 +24,7 @@ export async function GET(req) {
 
   if (!roomId) return err("roomId required", 400);
 
-  const room = getRoom(roomId);
+  const room = await getRoom(roomId);
   if (!room)  return err("Room not found", 404);
 
   return ok(playerId ? sanitizeState(room, playerId) : room);
@@ -48,10 +45,10 @@ export async function POST(req) {
       if (!playerName?.trim()) return err("playerName required", 400);
 
       let roomId;
-      do { roomId = genRoomId(); } while (getRoom(roomId));
+      do { roomId = genRoomId(); } while (await getRoom(roomId));
 
       const room = createRoom(roomId, playerName.trim());
-      setRoom(roomId, room);
+      await setRoom(roomId, room);
       return ok({ roomId, playerId: room.hostId });
     }
 
@@ -61,13 +58,13 @@ export async function POST(req) {
       if (!roomId?.trim() || !playerName?.trim()) return err("roomId and playerName required", 400);
 
       const code = roomId.trim().toUpperCase();
-      const room = getRoom(code);
+      const room = await getRoom(code);
       if (!room) return err("Room not found — check your code", 404);
       if (room.phase !== "waiting") return err("Game already in progress", 400);
       if (room.players.length >= 4) return err("Room is full", 400);
 
       const { room: updated, playerId } = joinRoom(room, playerName.trim());
-      setRoom(code, updated);
+      await setRoom(code, updated);
       return ok({ playerId });
     }
 
@@ -76,11 +73,11 @@ export async function POST(req) {
       const { roomId, playerId, move } = body;
       if (!roomId || !playerId || !move) return err("roomId, playerId, move required", 400);
 
-      const room = getRoom(roomId);
+      const room = await getRoom(roomId);
       if (!room) return err("Room not found", 404);
 
       const updated = processMove(room, playerId, move);
-      setRoom(roomId, updated);
+      await setRoom(roomId, updated);
       return ok({ ok: true });
     }
 
