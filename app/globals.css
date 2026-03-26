@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base ───────────────────────────────────────────────────────────────── */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+/* ─── Hide scrollbars (card hand row) ───────────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ─── Game table felt texture ────────────────────────────────────────────── */
+.felt-bg {
+  background-color: #0c1a1a;
+  background-image:
+    radial-gradient(ellipse at 20% 20%, rgba(16, 52, 40, 0.6) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 80%, rgba(15, 30, 60, 0.5) 0%, transparent 60%);
+}
+
+/* ─── Card shimmer on hover ──────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+/* ─── Smooth pulse for "your turn" indicator ─────────────────────────────── */
+@keyframes pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4); }
+  50%       { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
+}
+
+.turn-pulse {
+  animation: pulse-ring 2s ease-in-out infinite;
+}
