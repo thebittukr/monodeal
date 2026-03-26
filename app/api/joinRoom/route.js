@@ -16,7 +16,7 @@ export async function POST(req) {
     if (room.phase !== "waiting") {
       return NextResponse.json({ error: "Game already in progress" }, { status: 400 });
     }
-    if (room.players.length >= 2) {
+    if (room.players.length >= 4) {
       return NextResponse.json({ error: "Room is full" }, { status: 400 });
     }
 
