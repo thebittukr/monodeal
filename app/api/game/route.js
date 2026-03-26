@@ -8,6 +8,7 @@ import { getRoom, setRoom } from "@/lib/gameStore";
 import {
   createRoom,
   joinRoom,
+  forceStart,
   processMove,
   sanitizeState,
 } from "@/lib/gameEngine";
@@ -47,7 +48,7 @@ export async function POST(req) {
       let roomId;
       do { roomId = genRoomId(); } while (await getRoom(roomId));
 
-      const room = createRoom(roomId, playerName.trim());
+      const room = createRoom(roomId, playerName.trim(), body.maxPlayers ?? 4);
       await setRoom(roomId, room);
       return ok({ roomId, playerId: room.hostId });
     }
@@ -61,11 +62,24 @@ export async function POST(req) {
       const room = await getRoom(code);
       if (!room) return err("Room not found — check your code", 404);
       if (room.phase !== "waiting") return err("Game already in progress", 400);
-      if (room.players.length >= 4) return err("Room is full", 400);
+      if (room.players.length >= (room.roomMaxPlayers ?? 4)) return err("Room is full", 400);
 
       const { room: updated, playerId } = joinRoom(room, playerName.trim());
       await setRoom(code, updated);
       return ok({ playerId });
+    }
+
+    // ── startGame (host force-starts with 2–3 players) ───────────────────────
+    case "startGame": {
+      const { roomId, playerId } = body;
+      if (!roomId || !playerId) return err("roomId and playerId required", 400);
+
+      const room = await getRoom(roomId);
+      if (!room) return err("Room not found", 404);
+
+      const updated = forceStart(room, playerId);
+      await setRoom(roomId, updated);
+      return ok({ ok: true });
     }
 
     // ── playMove ──────────────────────────────────────────────────────────────

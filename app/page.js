@@ -9,11 +9,12 @@ const COLOR_PILLS = [
 
 export default function HomePage() {
   const router = useRouter();
-  const [tab,     setTab]     = useState("create");
-  const [name,    setName]    = useState("");
-  const [roomId,  setRoomId]  = useState("");
-  const [loading, setLoading] = useState(false);
-  const [err,     setErr]     = useState("");
+  const [tab,        setTab]        = useState("create");
+  const [name,       setName]       = useState("");
+  const [roomId,     setRoomId]     = useState("");
+  const [maxPlayers, setMaxPlayers] = useState(4);
+  const [loading,    setLoading]    = useState(false);
+  const [err,        setErr]        = useState("");
 
   async function handleCreate() {
     if (!name.trim()) { setErr("Enter your name first"); return; }
@@ -22,7 +23,7 @@ export default function HomePage() {
       const res  = await fetch("/api/game", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "createRoom", playerName: name.trim() }),
+        body: JSON.stringify({ action: "createRoom", playerName: name.trim(), maxPlayers }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -85,6 +86,27 @@ export default function HomePage() {
             placeholder="e.g. Alex" maxLength={20}
             className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-all mb-4"
           />
+
+          {tab === "create" && (
+            <>
+              <label className="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1.5">Number of Players</label>
+              <div className="flex gap-2 mb-4">
+                {[2, 3, 4].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setMaxPlayers(n)}
+                    className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all border ${
+                      maxPlayers === n
+                        ? "bg-indigo-600 border-indigo-500 text-white"
+                        : "bg-slate-900/60 border-white/10 text-slate-400 hover:text-white hover:border-white/20"
+                    }`}
+                  >
+                    {n} Players
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           {tab === "join" && (
             <>

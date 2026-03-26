@@ -117,9 +117,24 @@ export default function RoomPage() {
   // WAITING ROOM
   // ─────────────────────────────────────────────────────────────────────────
   if (!state || state.phase === "waiting") {
+    const cap     = state?.roomMaxPlayers ?? MAX_PLAYERS;
     const joined  = state?.players?.length ?? 1;
-    const needed  = MAX_PLAYERS - joined;
+    const needed  = cap - joined;
     const players = state?.players ?? [];
+    const isHost  = state?.hostId === myId;
+    const canStart = isHost && joined >= 2;
+
+    const handleStart = async () => {
+      try {
+        const res = await fetch("/api/game", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "startGame", roomId, playerId: myId }),
+        });
+        const data = await res.json();
+        if (!res.ok) alert(data.error);
+      } catch {}
+    };
 
     return (
       <div className="min-h-full felt-bg flex flex-col items-center justify-center px-4">
@@ -128,18 +143,20 @@ export default function RoomPage() {
             <div className="text-4xl mb-3 animate-bounce-sm">⏳</div>
             <h2 className="text-white font-black text-2xl">Waiting for players</h2>
             <p className="text-slate-400 text-sm mt-1">
-              {reconnecting ? "Reconnecting…" : needed > 0 ? `Need ${needed} more player${needed > 1 ? "s" : ""} to start` : "Starting…"}
+              {reconnecting ? "Reconnecting…" : needed > 0
+                ? `Need ${needed} more player${needed > 1 ? "s" : ""} (${joined}/${cap})`
+                : "Starting…"}
             </p>
           </div>
 
           <div className="flex gap-1.5 mb-6">
-            {Array.from({ length: MAX_PLAYERS }).map((_, i) => (
+            {Array.from({ length: cap }).map((_, i) => (
               <div key={i} className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${i < joined ? "bg-emerald-400" : "bg-slate-700"}`} />
             ))}
           </div>
 
           <div className="space-y-2 mb-6">
-            {Array.from({ length: MAX_PLAYERS }).map((_, i) => {
+            {Array.from({ length: cap }).map((_, i) => {
               const p = players[i];
               return (
                 <div key={i} className={`flex items-center gap-2.5 px-3 py-2 rounded-xl ${p ? "bg-white/5 border border-white/10" : "border border-dashed border-white/10"}`}>
@@ -149,7 +166,8 @@ export default function RoomPage() {
                   <span className={p ? "text-white font-medium text-sm" : "text-slate-600 text-sm"}>
                     {p ? p.name : `Player ${i + 1}`}
                   </span>
-                  {p && <span className="ml-auto text-emerald-400 text-xs">✓</span>}
+                  {p && p.id === state?.hostId && <span className="ml-auto text-yellow-400 text-xs">host</span>}
+                  {p && p.id !== state?.hostId && <span className="ml-auto text-emerald-400 text-xs">✓</span>}
                 </div>
               );
             })}
@@ -161,9 +179,20 @@ export default function RoomPage() {
           </div>
           <p className="text-slate-500 text-xs text-center mb-4">{copied ? "Copied!" : "Share this code with friends"}</p>
 
+          {canStart && (
+            <button
+              onClick={handleStart}
+              className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors mb-3"
+            >
+              Start Game ({joined} players) ▶
+            </button>
+          )}
+
           <div className="flex items-center gap-2 justify-center">
             <div className={`w-2 h-2 rounded-full ${reconnecting ? "bg-yellow-400" : "bg-emerald-400"} animate-pulse`} />
-            <span className="text-slate-400 text-xs">{reconnecting ? "Reconnecting…" : "Auto-starts when all 4 join"}</span>
+            <span className="text-slate-400 text-xs">
+              {reconnecting ? "Reconnecting…" : canStart ? "or wait for more players to join" : `Auto-starts when ${cap} players join`}
+            </span>
           </div>
         </div>
 
