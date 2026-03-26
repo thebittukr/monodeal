@@ -3,9 +3,12 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import GameBoard from "@/components/GameBoard";
 
-const POLL_INTERVAL  = 1000;
-const MAX_PLAYERS    = 4;
-const COLD_FAIL_MAX  = 20; // redirect ONLY if we NEVER connected and fail 20x (~20s)
+const POLL_INTERVAL       = 2000;  // 2 s — halves Redis usage, still fast enough
+const MAX_PLAYERS         = 4;
+const COLD_FAIL_MAX       = 15;    // redirect only if never connected after ~30 s
+const RECONNECT_THRESHOLD = 3;     // show "reconnecting" only after 3 consecutive fails
+const MOVE_RETRIES        = 3;     // retry failed moves before showing error
+const RETRY_BASE_MS       = 600;   // backoff base (600 ms, 1200 ms, 1800 ms)
 
 export default function RoomPage() {
   const { roomId } = useParams();
@@ -59,16 +62,15 @@ export default function RoomPage() {
           setState(data);
         } else {
           failsRef.current += 1;
-          setReconnecting(true);
-          // Only redirect if we've NEVER seen this room and gave up after COLD_FAIL_MAX tries
+          // Only show reconnecting UI after several consecutive failures (avoids flicker)
+          if (failsRef.current >= RECONNECT_THRESHOLD) setReconnecting(true);
           if (!everConnectedRef.current && failsRef.current >= COLD_FAIL_MAX) {
             router.push("/");
           }
-          // If we previously connected, keep showing last known state — never auto-kick
         }
       } catch {
         failsRef.current += 1;
-        setReconnecting(true);
+        if (failsRef.current >= RECONNECT_THRESHOLD) setReconnecting(true);
         if (!everConnectedRef.current && failsRef.current >= COLD_FAIL_MAX) {
           router.push("/");
         }
@@ -90,21 +92,38 @@ export default function RoomPage() {
     setPrevTurnIdx(state.turnIndex);
   }, [state, prevPhase, prevTurnIdx]);
 
-  // ── Move ──────────────────────────────────────────────────────────────────
+  // ── Move (with retry) ─────────────────────────────────────────────────────
   const handleMove = useCallback(async (move) => {
     setMoveError("");
     soundsRef.current?.sfxCardPlay?.();
-    try {
-      const res  = await fetch("/api/game", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "playMove", roomId, playerId: myIdRef.current, move }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-    } catch (e) {
-      setMoveError(e.message);
-      setTimeout(() => setMoveError(""), 4000);
+
+    const body = JSON.stringify({ action: "playMove", roomId, playerId: myIdRef.current, move });
+
+    for (let attempt = 1; attempt <= MOVE_RETRIES; attempt++) {
+      try {
+        const res  = await fetch("/api/game", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+        });
+        const data = await res.json();
+
+        if (res.ok) return; // success — done
+
+        const isTransient = res.status >= 500 || data.error === "Room not found";
+        if (isTransient && attempt < MOVE_RETRIES) {
+          await new Promise((r) => setTimeout(r, RETRY_BASE_MS * attempt));
+          continue;
+        }
+        throw new Error(data.error);
+      } catch (e) {
+        if (attempt < MOVE_RETRIES) {
+          await new Promise((r) => setTimeout(r, RETRY_BASE_MS * attempt));
+          continue;
+        }
+        setMoveError(e.message ?? "Connection error — try again");
+        setTimeout(() => setMoveError(""), 5000);
+      }
     }
   }, [roomId]);
 
