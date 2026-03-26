@@ -320,7 +320,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
         {/* Hand */}
         <div className="px-2 pb-3 pt-0.5">
           <div className="text-slate-500 text-xs px-1 mb-1">Hand ({me?.hand?.length ?? 0})</div>
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <div className="card-hand-scroll flex gap-2 pb-1">
             {(me?.hand ?? []).map((card) => (
               <Card
                 key={card.id}

@@ -186,7 +186,12 @@ export default function RoomPage() {
           </div>
         </div>
 
-        <button onClick={() => router.push("/")} className="mt-4 text-slate-600 hover:text-slate-400 text-sm transition-colors">
+        <button
+          onClick={() => {
+            if (window.confirm("Leave the room?")) router.push("/");
+          }}
+          className="mt-4 text-slate-600 hover:text-slate-400 text-sm transition-colors"
+        >
           ← Leave Room
         </button>
       </div>
@@ -219,8 +224,15 @@ export default function RoomPage() {
           >
             {soundOn ? "🔊" : "🔇"}
           </button>
-          <button onClick={() => router.push("/")} className="text-slate-500 hover:text-white text-xs transition-colors">
-            ✕
+          <button
+            onClick={() => {
+              if (window.confirm("Leave the game? Your progress will be lost.")) {
+                router.push("/");
+              }
+            }}
+            className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-red-900/60 border border-white/10 text-slate-500 hover:text-red-400 text-xs transition-colors"
+          >
+            Leave
           </button>
         </div>
       </div>

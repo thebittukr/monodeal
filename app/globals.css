@@ -16,6 +16,20 @@ html, body {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* ─── Card hand scroll — prevent iOS swipe-to-go-back ───────────────────── */
+.card-hand-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain; /* stop browser back/forward gesture */
+  touch-action: pan-x;            /* only allow horizontal pan */
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.card-hand-scroll::-webkit-scrollbar { display: none; }
+.card-hand-scroll > * { scroll-snap-align: start; }
+
 /* ─── Game table felt texture ────────────────────────────────────────────── */
 .felt-bg {
   background-color: #0c1a1a;
