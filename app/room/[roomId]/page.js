@@ -17,13 +17,16 @@ export default function RoomPage() {
   const [soundOn,     setSoundOn]     = useState(false);
   const [prevPhase,   setPrevPhase]   = useState(null);
   const [prevTurnIdx, setPrevTurnIdx] = useState(null);
+  const [reconnecting, setReconnecting] = useState(false);
 
-  const myIdRef   = useRef(null);
-  const soundsRef = useRef(null);
+  const myIdRef    = useRef(null);
+  const soundsRef  = useRef(null);
+  const failsRef   = useRef(0);           // consecutive poll failures
+  const MAX_FAILS  = 10;                  // ~10s of retries before giving up
 
   // ── Identity ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    const pid = localStorage.getItem(`pr_${roomId}_pid`);
+    const pid = sessionStorage.getItem(`pr_${roomId}_pid`);
     if (!pid) { router.push("/"); return; }
     setMyId(pid);
     myIdRef.current = pid;
@@ -47,10 +50,25 @@ export default function RoomPage() {
     const poll = async () => {
       try {
         const res  = await fetch(`/api/state?roomId=${roomId}&playerId=${myId}`);
-        if (res.status === 404) { router.push("/"); return; }
-        const data = await res.json();
-        if (res.ok) setState(data);
-      } catch { /* silent */ }
+        if (res.ok) {
+          failsRef.current = 0;
+          setReconnecting(false);
+          const data = await res.json();
+          setState(data);
+        } else {
+          failsRef.current += 1;
+          if (failsRef.current >= MAX_FAILS) {
+            // Only give up after 10 consecutive failures (~10s)
+            router.push("/");
+          } else {
+            setReconnecting(true);
+          }
+        }
+      } catch {
+        failsRef.current += 1;
+        if (failsRef.current >= MAX_FAILS) router.push("/");
+        else setReconnecting(true);
+      }
     };
 
     poll();
@@ -161,8 +179,10 @@ export default function RoomPage() {
           <p className="text-slate-500 text-xs text-center mb-4">{copied ? "Copied!" : "Share this code with friends"}</p>
 
           <div className="flex items-center gap-2 justify-center">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-slate-400 text-xs">Auto-starts when all 4 join</span>
+            <div className={`w-2 h-2 rounded-full ${reconnecting ? "bg-yellow-400" : "bg-emerald-400"} animate-pulse`} />
+            <span className="text-slate-400 text-xs">
+              {reconnecting ? "Reconnecting…" : "Auto-starts when all 4 join"}
+            </span>
           </div>
         </div>
 
@@ -184,7 +204,12 @@ export default function RoomPage() {
           <span className="text-white font-black text-lg">Property</span>
           <span className="text-indigo-400 font-black text-lg">Rush</span>
         </div>
-        <div className="text-slate-600 text-xs font-mono">{roomId}</div>
+        <div className="flex items-center gap-1.5">
+          {reconnecting && (
+            <span className="text-yellow-400 text-xs animate-pulse">⟳ reconnecting</span>
+          )}
+          <span className="text-slate-600 text-xs font-mono">{roomId}</span>
+        </div>
         <div className="flex items-center gap-2">
           {/* Sound toggle */}
           <button

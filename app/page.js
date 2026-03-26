@@ -32,8 +32,8 @@ export default function HomePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      localStorage.setItem(`pr_${data.roomId}_pid`, data.playerId);
-      localStorage.setItem(`pr_${data.roomId}_name`, name.trim());
+      sessionStorage.setItem(`pr_${data.roomId}_pid`, data.playerId);
+      sessionStorage.setItem(`pr_${data.roomId}_name`, name.trim());
       router.push(`/room/${data.roomId}`);
     } catch (e) {
       setErr(e.message);
@@ -56,8 +56,8 @@ export default function HomePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      localStorage.setItem(`pr_${code}_pid`, data.playerId);
-      localStorage.setItem(`pr_${code}_name`, name.trim());
+      sessionStorage.setItem(`pr_${code}_pid`, data.playerId);
+      sessionStorage.setItem(`pr_${code}_name`, name.trim());
       router.push(`/room/${code}`);
     } catch (e) {
       setErr(e.message);
