@@ -1,16 +1,25 @@
 "use client";
+import { useState } from "react";
 import { COLORS, isSetComplete } from "@/lib/cards";
 import Card from "./Card";
+
+const COLOR_DOT_HEX = {
+  brown: "#92400e", lightblue: "#0ea5e9", pink: "#ec4899", orange: "#f97316",
+  red: "#ef4444",   yellow: "#eab308",   green: "#22c55e", blue: "#3b82f6",
+  railroad: "#6b7280", utility: "#14b8a6",
+};
 
 /**
  * Multi-purpose modal for card interactions.
  *
  * modes:
- *  "confirm"       — simple play confirmation
- *  "pick-color"    — choose which color to charge rent for
- *  "pick-property" — choose opponent property to steal (Sly Deal)
- *  "pick-set"      — choose opponent complete set (Deal Breaker)
- *  "respond"       — target player responds to incoming action
+ *  "confirm"         — simple play confirmation
+ *  "pick-color"      — choose which color to charge rent for
+ *  "pick-wild-color" — choose which color to place a wild property in
+ *  "pick-property"   — choose opponent property to steal (Sly Deal)
+ *  "pick-set"        — choose opponent complete set (Deal Breaker / Wrecking Ball)
+ *  "pick-force-deal" — choose your prop + opponent prop to swap (Force Deal)
+ *  "respond"         — target player responds to incoming action
  */
 export default function ActionModal({
   mode,
@@ -52,6 +61,14 @@ export default function ActionModal({
           />
         )}
 
+        {mode === "pick-wild-color" && card && (
+          <PickWildColor
+            card={card}
+            onConfirm={(chosenColor) => onConfirm({ chosenColor })}
+            onCancel={onCancel}
+          />
+        )}
+
         {mode === "pick-property" && (
           <PickProperty
             opponentAssets={opponentAssets}
@@ -63,9 +80,22 @@ export default function ActionModal({
 
         {mode === "pick-set" && (
           <PickSet
+            card={card}
             opponentAssets={opponentAssets}
             opponentName={opponentName}
             onConfirm={(color) => onConfirm({ targetColor: color })}
+            onCancel={onCancel}
+          />
+        )}
+
+        {mode === "pick-force-deal" && (
+          <PickForceDeal
+            opponentAssets={opponentAssets}
+            opponentName={opponentName}
+            myAssets={myAssets}
+            myName={myName}
+            onConfirm={({ targetColor, targetCardId, myColor, myCardId }) =>
+              onConfirm({ targetColor, targetCardId, myColor, myCardId })}
             onCancel={onCancel}
           />
         )}
@@ -149,6 +179,46 @@ function PickColor({ card, myAssets, onConfirm, onCancel }) {
   );
 }
 
+function PickWildColor({ card, onConfirm, onCancel }) {
+  const eligible = card.colors ?? Object.keys(COLORS);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="text-center">
+        <h3 className="text-white font-bold text-lg">Place Wild Property</h3>
+        <p className="text-slate-400 text-sm mt-1">
+          {card.colors
+            ? `Choose: ${card.colors.map((c) => COLORS[c]?.label).join(" or ")}`
+            : "Place in any color group"}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+        {eligible.map((color) => {
+          const meta = COLORS[color];
+          return (
+            <button
+              key={color}
+              onClick={() => onConfirm(color)}
+              className="flex items-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+            >
+              <ColorDot color={color} />
+              <div className="text-left">
+                <div className="text-white font-semibold text-sm">{meta.label}</div>
+                <div className="text-slate-400 text-xs">Set of {meta.setSize}</div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <button onClick={onCancel} className="w-full py-2.5 rounded-xl border border-white/20 text-white/70 font-semibold hover:bg-white/5 transition-colors">
+        Cancel
+      </button>
+    </div>
+  );
+}
+
 function PickProperty({ opponentAssets, opponentName, onConfirm, onCancel }) {
   const stealable = Object.entries(opponentAssets).filter(
     ([color, cards]) => cards.length > 0 && !isSetComplete(opponentAssets, color)
@@ -198,23 +268,26 @@ function PickProperty({ opponentAssets, opponentName, onConfirm, onCancel }) {
   );
 }
 
-function PickSet({ opponentAssets, opponentName, onConfirm, onCancel }) {
-  const completeSets = Object.entries(opponentAssets).filter(([color, cards]) =>
+function PickSet({ card, opponentAssets, opponentName, onConfirm, onCancel }) {
+  const completeSets = Object.entries(opponentAssets).filter(([color]) =>
     isSetComplete(opponentAssets, color)
   );
+  const isWrecking = card?.action === "wreckingball";
 
   return (
     <div className="flex flex-col gap-4">
       <div className="text-center">
-        <h3 className="text-white font-bold text-lg">Deal Breaker</h3>
+        <h3 className="text-white font-bold text-lg">{isWrecking ? "Wrecking Ball 💥" : "Deal Breaker"}</h3>
         <p className="text-slate-400 text-sm mt-1">
-          Steal a complete set from {opponentName}
+          {isWrecking
+            ? `Demolish one of ${opponentName}'s complete sets (goes to discard!)`
+            : `Steal a complete set from ${opponentName}`}
         </p>
       </div>
 
       {completeSets.length === 0 ? (
         <p className="text-red-400 text-center text-sm">
-          {opponentName} has no complete sets to steal!
+          {opponentName} has no complete sets!
         </p>
       ) : (
         <div className="flex flex-col gap-2">
@@ -246,13 +319,99 @@ function PickSet({ opponentAssets, opponentName, onConfirm, onCancel }) {
   );
 }
 
+function PickForceDeal({ opponentAssets, opponentName, myAssets, myName, onConfirm, onCancel }) {
+  const [myPick,   setMyPick]   = useState(null);   // { color, cardId }
+  const [oppPick,  setOppPick]  = useState(null);   // { color, cardId }
+
+  const myStealable  = Object.entries(myAssets).filter(([c, cards]) => cards.length > 0 && !isSetComplete(myAssets, c));
+  const oppStealable = Object.entries(opponentAssets).filter(([c, cards]) => cards.length > 0 && !isSetComplete(opponentAssets, c));
+
+  const ready = myPick && oppPick;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="text-center">
+        <h3 className="text-white font-bold text-lg">Force Deal 🔄</h3>
+        <p className="text-slate-400 text-sm mt-1">Pick one of your properties to give, and one of theirs to take</p>
+      </div>
+
+      {/* My property to give */}
+      <div>
+        <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1.5">
+          You give ({myName}) {myPick ? <span className="text-emerald-400">✓ selected</span> : "— pick one"}
+        </div>
+        {myStealable.length === 0 ? (
+          <p className="text-red-400 text-xs">You have no incomplete-set properties to give!</p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+            {myStealable.flatMap(([color, cards]) =>
+              cards.map((c) => (
+                <div
+                  key={c.id}
+                  onClick={() => setMyPick({ color, cardId: c.id })}
+                  className={`cursor-pointer rounded-lg ${myPick?.cardId === c.id ? "ring-2 ring-emerald-400" : ""}`}
+                >
+                  <Card card={c} small />
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Opponent property to take */}
+      <div>
+        <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1.5">
+          You take ({opponentName}) {oppPick ? <span className="text-emerald-400">✓ selected</span> : "— pick one"}
+        </div>
+        {oppStealable.length === 0 ? (
+          <p className="text-red-400 text-xs">{opponentName} has no incomplete-set properties!</p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+            {oppStealable.flatMap(([color, cards]) =>
+              cards.map((c) => (
+                <div
+                  key={c.id}
+                  onClick={() => setOppPick({ color, cardId: c.id })}
+                  className={`cursor-pointer rounded-lg ${oppPick?.cardId === c.id ? "ring-2 ring-indigo-400" : ""}`}
+                >
+                  <Card card={c} small />
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-3">
+        <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border border-white/20 text-white/70 font-semibold hover:bg-white/5 transition-colors">
+          Cancel
+        </button>
+        <button
+          onClick={() => ready && onConfirm({ myColor: myPick.color, myCardId: myPick.cardId, targetColor: oppPick.color, targetCardId: oppPick.cardId })}
+          disabled={!ready}
+          className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold transition-colors"
+        >
+          Swap ↔
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function RespondToAction({ pendingAction, attackerName, hasJustSayNo, onAccept, onBlock }) {
+  const color = pendingAction.params?.targetColor ?? "";
   const actionLabels = {
     debtcollector: `${attackerName} wants you to pay $${pendingAction.params?.amount}M!`,
     birthday:      `${attackerName} is celebrating — you must pay $${pendingAction.params?.amount}M!`,
     slydeal:       `${attackerName} is using Sly Deal to steal your property!`,
-    dealbreaker:   `${attackerName} played Deal Breaker on your ${pendingAction.params?.targetColor ?? ""} set!`,
+    dealbreaker:   `${attackerName} played Deal Breaker on your ${color} set!`,
     rent:          `${attackerName} is charging you $${pendingAction.params?.amount}M rent!`,
+    identityswap:  `${attackerName} wants to swap ALL your properties with theirs! 🔀`,
+    taxtherich:    `${attackerName} wants to take half your bank ($${pendingAction.params?.amount}M)! 💸`,
+    wreckingball:  `${attackerName} wants to demolish your ${color} property set! 💥`,
+    forceddeal:    `${attackerName} wants to force-swap one of your properties! 🔄`,
+    propertytax:   `${attackerName} declared Property Tax — you owe $1M per complete set!`,
   };
 
   const label = actionLabels[pendingAction.type] ?? "Opponent played an action against you!";
@@ -287,10 +446,9 @@ function RespondToAction({ pendingAction, attackerName, hasJustSayNo, onAccept, 
 }
 
 function ColorDot({ color }) {
-  const dotColors = {
-    brown:  "bg-amber-700",  blue: "bg-blue-500",
-    red:    "bg-red-500",    green: "bg-green-500",
-    yellow: "bg-yellow-400", orange: "bg-orange-500",
-  };
-  return <span className={`w-3 h-3 rounded-full flex-shrink-0 ${dotColors[color] ?? "bg-slate-400"}`} />;
+  const hex = COLOR_DOT_HEX[color];
+  if (hex) {
+    return <span className="w-3 h-3 rounded-full flex-shrink-0 border border-white/30" style={{ backgroundColor: hex }} />;
+  }
+  return <span className="w-3 h-3 rounded-full flex-shrink-0 bg-slate-400" />;
 }

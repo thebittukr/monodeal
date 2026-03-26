@@ -19,16 +19,14 @@ html, body {
 /* ─── Card hand scroll — prevent iOS swipe-to-go-back ───────────────────── */
 .card-hand-scroll {
   overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain; /* stop browser back/forward gesture */
-  touch-action: pan-x;            /* only allow horizontal pan */
+  overflow-y: visible;
+  overscroll-behavior-x: contain; /* stop browser back/forward nav gesture */
+  /* NO touch-action override — leave as 'auto' so card taps still fire */
   -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x proximity;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 .card-hand-scroll::-webkit-scrollbar { display: none; }
-.card-hand-scroll > * { scroll-snap-align: start; }
 
 /* ─── Game table felt texture ────────────────────────────────────────────── */
 .felt-bg {
