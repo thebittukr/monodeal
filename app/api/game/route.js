@@ -7,9 +7,11 @@ import { NextResponse } from "next/server";
 import { getRoom, setRoom } from "@/lib/gameStore";
 import {
   createRoom,
+  createSoloRoom,
   joinRoom,
   forceStart,
   processMove,
+  runBotTurns,
   sanitizeState,
 } from "@/lib/gameEngine";
 
@@ -91,8 +93,24 @@ export async function POST(req) {
       if (!room) return err("Room not found", 404);
 
       const updated = processMove(room, playerId, move);
+      runBotTurns(updated);
       await setRoom(roomId, updated);
       return ok({ ok: true });
+    }
+
+    // ── createSoloRoom ────────────────────────────────────────────────────────
+    case "createSoloRoom": {
+      const { playerName } = body;
+      if (!playerName?.trim()) return err("playerName required", 400);
+
+      let roomId;
+      do { roomId = genRoomId(); } while (await getRoom(roomId));
+
+      const { room, playerId } = createSoloRoom(roomId, playerName.trim());
+      // Run bot turns if first player is a bot (safety check)
+      runBotTurns(room);
+      await setRoom(roomId, room);
+      return ok({ roomId, playerId });
     }
 
     default:

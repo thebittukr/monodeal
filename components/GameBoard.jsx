@@ -23,6 +23,20 @@ export default function GameBoard({ state, myId, onMove, error }) {
   if (!state) return <LoadingScreen />;
 
   const myIdx     = state.players.findIndex((p) => p.id === myId);
+
+  if (myIdx === -1 && state.phase === "playing") {
+    return (
+      <div className="flex items-center justify-center h-full text-white text-center p-8">
+        <div>
+          <div className="text-4xl mb-4">🚫</div>
+          <h2 className="text-xl font-bold mb-2">Player not found</h2>
+          <p className="text-slate-400 text-sm mb-4">Your session may have expired. The game is in progress.</p>
+          <button onClick={() => window.location.href = "/"} className="px-6 py-2 bg-indigo-600 rounded-xl font-bold">Go Home</button>
+        </div>
+      </div>
+    );
+  }
+
   const me        = state.players[myIdx];
   const opponents = state.players.filter((p) => p.id !== myId);
   const isMyTurn  = state.turnIndex === myIdx;

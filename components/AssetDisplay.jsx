@@ -1,5 +1,5 @@
 "use client";
-import { COLORS } from "@/lib/cards";
+import { COLORS, getRentAmount } from "@/lib/cards";
 
 // Inline color styles so nothing depends on Tailwind dynamic purging
 const COLOR_STYLE = {
@@ -52,6 +52,7 @@ export default function AssetDisplay({
               <span className="text-white/90 font-bold uppercase tracking-wide" style={{ fontSize: 9 }}>
                 {meta.label}
               </span>
+              <span style={{ fontSize: 8, color: complete ? "#fde047" : "#86efac", marginLeft: 3 }}>${getRentAmount(color, cards.length)}M</span>
               <span className="ml-auto text-white/60" style={{ fontSize: 9 }}>
                 {cards.length}/{meta.setSize}
               </span>

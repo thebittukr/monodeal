@@ -65,6 +65,23 @@ export default function HomePage() {
     } catch (e) { setErr(e.message); setLoading(false); }
   }
 
+  async function handleSolo() {
+    if (!name.trim()) { setErr("Enter your name first"); return; }
+    setErr(""); setLoading(true);
+    try {
+      const res = await fetch("/api/game", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "createSoloRoom", playerName: name.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      sessionStorage.setItem(`pr_${data.roomId}_pid`, data.playerId);
+      localStorage.setItem(`pr_${data.roomId}_pid`, data.playerId);
+      router.push(`/room/${data.roomId}`);
+    } catch (e) { setErr(e.message); setLoading(false); }
+  }
+
   async function handleJoin() {
     if (!name.trim())   { setErr("Enter your name first"); return; }
     if (!roomId.trim()) { setErr("Enter a room code"); return; }
@@ -182,6 +199,13 @@ export default function HomePage() {
             className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold text-base transition-all duration-150 shadow-lg shadow-indigo-500/20"
           >
             {loading ? "Loading…" : tab === "create" ? "Create Room +" : "Join Game →"}
+          </button>
+          <button
+            onClick={handleSolo}
+            disabled={loading}
+            className="w-full py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold text-sm transition-all duration-150 shadow-lg mt-2"
+          >
+            {loading ? "Loading…" : "⚡ Play Solo vs 3 Bots"}
           </button>
         </div>
 

@@ -624,10 +624,10 @@ function RespondToAction({ pendingAction, attackerName, hasJustSayNo, myAssets, 
   }
 
   if (type === "identityswap") {
-    takenCards = Object.values(myAssets).flat();
+    takenCards = Object.values(myAssets ?? {}).flat();
     takenLabel = "Your properties (all swapped away)";
     if (attackerAssets) {
-      givenCards = Object.values(attackerAssets).flat();
+      givenCards = Object.values(attackerAssets ?? {}).flat();
       givenLabel = "You receive in return";
     }
   }
