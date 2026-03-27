@@ -794,113 +794,164 @@ function getPositions(n) {
   return Array.from({ length: n }, (_, i) => 5 + (90 / (n - 1)) * i);
 }
 
-// ── CharacterSlot — own Three.js canvas per character ─────────────────────────
-function CharacterSlot({ url, charIndex, playerName, bubbleDelayMs, gameActive, forceReactLine, slim }) {
-  const canvasRef            = useRef(null);
-  const [visible,    setVisible]    = useState(false);
-  const [bubble,     setBubble]     = useState('');
-  const [showBubble, setShowBubble] = useState(false);
+// ── Character dimensions ───────────────────────────────────────────────────────
+const CHAR_W = 140;
+const CHAR_H = 420;
 
-  // ── Mini Three.js scene ──────────────────────────────────────────────────────
+// ── Single shared-renderer stage — ONE WebGL context for BOTH girls ────────────
+// Uses scissor/viewport to draw each model into its own region of one canvas.
+function CharacterStage({ slots, positions }) {
+  const canvasRef = useRef(null);
+  const [ready, setReady] = useState(false);
+
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || slots.length === 0) return;
 
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // ONE renderer — replaces N individual contexts
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap to save VRAM
     renderer.outputColorSpace  = THREE.SRGBColorSpace;
     renderer.toneMapping       = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
+    renderer.autoClear = false;
+    renderer.setClearColor(0x000000, 0);
 
-    const scene  = new THREE.Scene();
-    const W = canvas.clientWidth || 140;
-    const H = canvas.clientHeight || 400;
-    const camera = new THREE.PerspectiveCamera(42, W / H, 0.01, 100);
-
-    // Neutral env map — drives PBR specular without RoomEnvironment
+    // Shared env map — generated ONCE, reused by every scene
     const pmrem = new THREE.PMREMGenerator(renderer);
-    const neutralEnv = pmrem.fromScene(new THREE.Scene()).texture;
-    scene.environment = neutralEnv;
+    const sharedEnv = pmrem.fromScene(new THREE.Scene()).texture;
     pmrem.dispose();
 
-    // Strong lights so diffuse colour shows correctly
-    scene.add(new THREE.AmbientLight(0xffffff, 3.0));
-    const key = new THREE.DirectionalLight(0xfff4e0, 3.0);
-    key.position.set(1.5, 3, 2);
-    scene.add(key);
-    const fill = new THREE.DirectionalLight(0xaabbff, 1.2);
-    fill.position.set(-2, 1, 1);
-    scene.add(fill);
-    const back = new THREE.DirectionalLight(0xffffff, 1.0);
-    back.position.set(0, 2, -3);
-    scene.add(back);
+    function makeScene() {
+      const sc = new THREE.Scene();
+      sc.environment = sharedEnv;
+      sc.add(new THREE.AmbientLight(0xffffff, 3.0));
+      const key = new THREE.DirectionalLight(0xfff4e0, 3.0);
+      key.position.set(1.5, 3, 2); sc.add(key);
+      const fill = new THREE.DirectionalLight(0xaabbff, 1.2);
+      fill.position.set(-2, 1, 1); sc.add(fill);
+      const back = new THREE.DirectionalLight(0xffffff, 1.0);
+      back.position.set(0, 2, -3); sc.add(back);
+      return sc;
+    }
 
-    // Load GLB
+    const chars = slots.map((_, i) => ({
+      scene:    makeScene(),
+      camera:   new THREE.PerspectiveCamera(42, CHAR_W / CHAR_H, 0.01, 100),
+      mixer:    null,
+      model:    null,
+      rotY:     Math.random() * Math.PI * 2,
+      spinRate: 0.16 + (i % 4) * 0.025 + Math.random() * 0.04,
+      ready:    false,
+    }));
+
     const loader = new GLTFLoader();
     loader.setDRACOLoader(getDracoLoader());
+    let loadedN = 0;
 
-    let mixer  = null;
-    let model  = null;
-    let rafId  = null;
-    // Truly random start angle + per-character speed variation so they never sync
-    let rotationY = Math.random() * Math.PI * 2;
-    const spinRate  = 0.16 + (charIndex % 4) * 0.025 + (Math.random() * 0.04);
+    chars.forEach((cd, i) => {
+      loader.load(slots[i].url, (gltf) => {
+        const model = gltf.scene;
+        const box   = new THREE.Box3().setFromObject(model);
+        const size  = box.getSize(new THREE.Vector3());
+        const ctr   = box.getCenter(new THREE.Vector3());
+        const sc    = 2.0 / Math.max(size.x, size.y, size.z);
+        model.scale.setScalar(sc);
+        model.position.set(-ctr.x * sc, -ctr.y * sc + size.y * sc * 0.05, -ctr.z * sc);
+        cd.scene.add(model);
+        cd.model = model;
 
-    loader.load(url, (gltf) => {
-      model = gltf.scene;
+        const sh = size.y * sc;
+        cd.camera.position.set(0, sh * 0.42, sh * 1.1);
+        cd.camera.lookAt(0, sh * 0.42, 0);
 
-      // Auto-scale & center model to fit a 2-unit tall box
-      const box    = new THREE.Box3().setFromObject(model);
-      const size   = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
-      const scale  = 2.0 / Math.max(size.x, size.y, size.z);
-      model.scale.setScalar(scale);
-      model.position.set(
-        -center.x * scale,
-        -center.y * scale + (size.y * scale * 0.05),
-        -center.z * scale,
-      );
-      scene.add(model);
-
-      const scaledH = size.y * scale;
-      camera.position.set(0, scaledH * 0.42, scaledH * 1.1);
-      camera.lookAt(0, scaledH * 0.42, 0);
-
-      if (gltf.animations.length > 0) {
-        mixer = new THREE.AnimationMixer(model);
-        mixer.clipAction(gltf.animations[0]).play();
-      }
-
-      setVisible(true);
+        if (gltf.animations.length > 0) {
+          cd.mixer = new THREE.AnimationMixer(model);
+          cd.mixer.clipAction(gltf.animations[0]).play();
+        }
+        cd.ready = true;
+        loadedN += 1;
+        if (loadedN === slots.length) setReady(true);
+      });
     });
 
     const clock = new THREE.Clock();
+    let rafId;
+
     function animate() {
       rafId = requestAnimationFrame(animate);
       const dt = clock.getDelta();
-      if (mixer) mixer.update(dt);
-      if (model) {
-        rotationY += dt * spinRate;
-        model.rotation.y = rotationY;
-      }
-      const cW = canvas.clientWidth, cH = canvas.clientHeight;
-      if (cW > 0 && cH > 0) {
-        renderer.setSize(cW, cH, false);
-        camera.aspect = cW / cH;
-        camera.updateProjectionMatrix();
-      }
-      renderer.render(scene, camera);
+
+      const cssW = canvas.clientWidth;
+      const cssH = canvas.clientHeight;
+      if (cssW > 0 && cssH > 0) renderer.setSize(cssW, cssH, false);
+
+      renderer.setScissorTest(false);
+      renderer.clear();
+      renderer.setScissorTest(true);
+
+      chars.forEach((cd, i) => {
+        if (!cd.ready || !cd.model) return;
+        if (cd.mixer) cd.mixer.update(dt);
+        cd.rotY += dt * cd.spinRate;
+        cd.model.rotation.y = cd.rotY;
+
+        const W = canvas.clientWidth, H = canvas.clientHeight;
+        const cx = Math.round((positions[i] / 100) * W);
+        const left = cx - CHAR_W / 2;
+        const h    = Math.min(CHAR_H, H);
+
+        if (left + CHAR_W < 0 || left > W) return; // off-screen
+
+        renderer.setViewport(left, 0, CHAR_W, h);
+        renderer.setScissor(left, 0, CHAR_W, h);
+        cd.camera.aspect = CHAR_W / h;
+        cd.camera.updateProjectionMatrix();
+        renderer.clearDepth();
+        renderer.render(cd.scene, cd.camera);
+      });
+      renderer.setScissorTest(false);
     }
     animate();
 
     return () => {
       cancelAnimationFrame(rafId);
+      chars.forEach(cd => {
+        if (cd.model) {
+          cd.model.traverse(child => {
+            if (!child.isMesh) return;
+            child.geometry?.dispose();
+            (Array.isArray(child.material) ? child.material : [child.material]).forEach(m => {
+              if (!m) return;
+              Object.values(m).forEach(v => { if (v?.isTexture) v.dispose(); });
+              m.dispose?.();
+            });
+          });
+        }
+        cd.scene.clear();
+      });
+      sharedEnv.dispose();
       renderer.dispose();
-      scene.clear();
     };
-  }, [url, charIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [slots.map(s => s.url).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Forced reaction (card play) ───────────────────────────────────────────────
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'absolute', inset: 0, width: '100%', height: '100%',
+        display: 'block', pointerEvents: 'none',
+        opacity: ready ? 1 : 0, transition: 'opacity 1.8s ease',
+      }}
+    />
+  );
+}
+
+// ── Pure-HTML speech bubble overlay (no WebGL) ─────────────────────────────────
+function CharacterBubble({ charIndex, playerName, posLeft, bubbleDelayMs, gameActive, forceReactLine }) {
+  const [bubble,     setBubble]     = useState('');
+  const [showBubble, setShowBubble] = useState(false);
+
   useEffect(() => {
     if (!forceReactLine) return;
     setBubble(forceReactLine);
@@ -910,46 +961,39 @@ function CharacterSlot({ url, charIndex, playerName, bubbleDelayMs, gameActive, 
     return () => clearTimeout(t);
   }, [forceReactLine]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Periodic speech bubble (only during active game, infrequent) ─────────────
   useEffect(() => {
-    if (!gameActive) return; // silent on home page & waiting room
+    if (!gameActive) return;
     let showT, hideT, cycleT;
-
-    function pickLine() {
-      // Rotate through hype → sassy → hype for organic feel
-      const pool = Math.random() < 0.55 ? HYPE_LINES : SASSY_LINES;
-      return pool[Math.floor(Math.random() * pool.length)];
-    }
-
     function showLine() {
-      const line = pickLine();
+      const pool = Math.random() < 0.55 ? HYPE_LINES : SASSY_LINES;
+      const line = pool[Math.floor(Math.random() * pool.length)];
       setBubble(line);
       setShowBubble(true);
       narrateCharacter(line, charIndex);
       hideT  = setTimeout(() => setShowBubble(false), 4500);
-      cycleT = setTimeout(showLine, 32000 + Math.random() * 22000); // 32–54 s gap
+      cycleT = setTimeout(showLine, 32000 + Math.random() * 22000);
     }
     showT = setTimeout(showLine, bubbleDelayMs);
     return () => { clearTimeout(showT); clearTimeout(hideT); clearTimeout(cycleT); };
   }, [gameActive, bubbleDelayMs, charIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const W = slim ? 110 : 140;
-  const H = slim ? 340 : 420;
-
   return (
-    <div style={{ position: 'relative', width: W, height: H, flexShrink: 0 }}>
-      {/* Speech bubble */}
+    <div style={{
+      position: 'absolute', bottom: 0, left: `${posLeft}%`,
+      transform: 'translateX(-50%)', width: CHAR_W, height: CHAR_H,
+      pointerEvents: 'none',
+    }}>
+      {/* Bubble */}
       <div style={{
         position: 'absolute', bottom: '102%', left: '50%',
         transform: 'translateX(-50%)',
         background: 'rgba(15,10,30,0.93)',
         border: '1px solid rgba(180,130,255,0.35)',
         borderRadius: 12, padding: '6px 10px',
-        whiteSpace: 'nowrap', fontSize: 11, fontWeight: 600,
-        color: '#ead8ff', pointerEvents: 'none',
+        fontSize: 11, fontWeight: 600, color: '#ead8ff',
+        whiteSpace: 'nowrap', maxWidth: 220, pointerEvents: 'none',
         opacity: showBubble ? 1 : 0, transition: 'opacity 0.4s ease',
         zIndex: 30, boxShadow: '0 2px 16px rgba(120,60,200,0.4)',
-        maxWidth: 220,
       }}>
         {bubble}
         <div style={{
@@ -959,22 +1003,11 @@ function CharacterSlot({ url, charIndex, playerName, bubbleDelayMs, gameActive, 
           borderTop: '7px solid rgba(180,130,255,0.35)',
         }} />
       </div>
-
-      {/* Character canvas */}
-      <canvas
-        ref={canvasRef}
-        style={{
-          display: 'block', width: '100%', height: '100%',
-          opacity: visible ? 1 : 0, transition: 'opacity 1.5s ease',
-        }}
-      />
-
-      {/* Player name label */}
       {playerName && (
         <div style={{
           position: 'absolute', bottom: -22, left: '50%', transform: 'translateX(-50%)',
           fontSize: 11, fontWeight: 700, color: 'rgba(200,180,255,0.85)',
-          whiteSpace: 'nowrap', letterSpacing: '0.05em', pointerEvents: 'none',
+          whiteSpace: 'nowrap', letterSpacing: '0.05em',
         }}>
           {playerName}
         </div>
@@ -1013,23 +1046,40 @@ export default function CasinoBackground({
     return () => { if (cleanupRef.current) cleanupRef.current(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // One girl per player (up to CHAR_POOL.length); home page gets 2 decorative girls
-  const slots = players.length > 0
+  // Full slot list (one per player, or 2 decorative on home page)
+  const allSlots = players.length > 0
     ? players.slice(0, CHAR_POOL.length).map((p, i) => ({
-        url:           CHAR_POOL[i % CHAR_POOL.length].url,
-        playerName:    p.name,
+        url:          CHAR_POOL[i % CHAR_POOL.length].url,
+        playerName:   p.name,
+        charIndex:    i,
         bubbleDelayMs: 8000 + i * 4000,
       }))
     : [
-        { url: CHAR_POOL[0].url, playerName: '', bubbleDelayMs: 9000  },
-        { url: CHAR_POOL[5].url, playerName: '', bubbleDelayMs: 15000 },
+        { url: CHAR_POOL[0].url, playerName: '', charIndex: 0, bubbleDelayMs: 9000  },
+        { url: CHAR_POOL[5].url, playerName: '', charIndex: 5, bubbleDelayMs: 15000 },
       ];
 
-  // Card-play reaction: random character reacts with a hype or card-react line
+  // Always show exactly 2 girls: pick two random ones each mount to keep it fresh
+  // (stable ref so they don't re-randomise on every render)
+  const pairRef = useRef(null);
+  if (!pairRef.current || pairRef.current.srcLen !== allSlots.length) {
+    if (allSlots.length <= 2) {
+      pairRef.current = { pair: allSlots, srcLen: allSlots.length };
+    } else {
+      // Pick 2 distinct random indices
+      const a = Math.floor(Math.random() * allSlots.length);
+      let b = Math.floor(Math.random() * (allSlots.length - 1));
+      if (b >= a) b += 1;
+      pairRef.current = { pair: [allSlots[a], allSlots[b]], srcLen: allSlots.length };
+    }
+  }
+  const displaySlots = pairRef.current.pair;
+  const displayPositions = [9, 91]; // left + right edges, always fully visible
+
+  // Card-play reaction: pick a random display slot
   useEffect(() => {
-    if (!reactionTrigger || slots.length === 0) return;
-    const idx  = Math.floor(Math.random() * slots.length);
-    // 60% card-react burst, 40% full hype line
+    if (!reactionTrigger || displaySlots.length === 0) return;
+    const idx  = Math.floor(Math.random() * displaySlots.length);
     const pool = Math.random() < 0.6 ? CARD_REACT_LINES : HYPE_LINES;
     const line = pool[Math.floor(Math.random() * pool.length)];
     setReactingSlot(idx);
@@ -1038,11 +1088,10 @@ export default function CasinoBackground({
     return () => clearTimeout(t);
   }, [reactionTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Loss/negative-action reaction: targeted character shows sympathy or sass
+  // Loss reaction
   useEffect(() => {
-    if (lossTarget < 0 || slots.length === 0) return;
-    const idx  = lossTarget % slots.length;
-    // 70% loss line, 30% sassy comment about the negative play
+    if (lossTarget < 0 || displaySlots.length === 0) return;
+    const idx  = lossTarget % displaySlots.length;
     const pool = Math.random() < 0.7 ? LOSS_LINES : SASSY_LINES;
     const line = pool[Math.floor(Math.random() * pool.length)];
     setLossSlot(idx);
@@ -1051,11 +1100,6 @@ export default function CasinoBackground({
     return () => clearTimeout(t);
   }, [lossTarget]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const positions = getPositions(slots.length);
-
-  // Mobile slot: always show slot[0] (smallest one, no name)
-  const mobileSlot = slots[0] ?? null;
-
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 0 }}>
       <canvas
@@ -1063,46 +1107,51 @@ export default function CasinoBackground({
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}
       />
 
-      {/* Mobile: single slim character, bottom-right corner */}
-      {mobileSlot && (
-        <div className="sm:hidden" style={{
-          position: 'absolute', bottom: 0, right: 8,
-          zIndex: 18, pointerEvents: 'none',
-        }}>
-          <CharacterSlot
-            url={mobileSlot.url}
-            charIndex={0}
-            playerName=""
-            bubbleDelayMs={12000}
-            gameActive={gameActive}
-            forceReactLine={reactingSlot === 0 ? reactingLine : (lossSlot === 0 ? lossLine : '')}
-            slim
-          />
-        </div>
-      )}
-
-      {/* Desktop: one girl per player, clustered near screen edges, above game board */}
+      {/* Desktop character layer — ONE renderer for both girls */}
       <div className="hidden sm:block" style={{
         position: 'fixed', inset: 0, zIndex: 18, pointerEvents: 'none',
       }}>
-        {slots.map((slot, i) => (
-          <div
+        {/* Single shared-renderer canvas */}
+        <CharacterStage slots={displaySlots} positions={displayPositions} />
+
+        {/* HTML overlays: bubbles + name labels (no WebGL) */}
+        {displaySlots.map((slot, i) => (
+          <CharacterBubble
             key={slot.url + i}
-            style={{ position: 'absolute', bottom: 0, left: `${positions[i]}%`, transform: 'translateX(-50%)' }}
-          >
-            <CharacterSlot
-              url={slot.url}
-              charIndex={i}
-              playerName={slot.playerName}
-              bubbleDelayMs={slot.bubbleDelayMs}
-              gameActive={gameActive}
-              forceReactLine={
-                reactingSlot === i ? reactingLine :
-                lossSlot     === i ? lossLine     : ''
-              }
-            />
-          </div>
+            charIndex={slot.charIndex}
+            playerName={slot.playerName}
+            posLeft={displayPositions[i]}
+            bubbleDelayMs={slot.bubbleDelayMs}
+            gameActive={gameActive}
+            forceReactLine={
+              reactingSlot === i ? reactingLine :
+              lossSlot     === i ? lossLine     : ''
+            }
+          />
         ))}
+      </div>
+
+      {/* Mobile: ONE girl, bottom-right, no renderer (uses CharacterStage with 1 slot) */}
+      <div className="sm:hidden" style={{
+        position: 'fixed', bottom: 0, right: 0, zIndex: 18, pointerEvents: 'none',
+        width: 110, height: 340,
+      }}>
+        {displaySlots[0] && (
+          <>
+            <CharacterStage
+              slots={[displaySlots[0]]}
+              positions={[50]}
+            />
+            <CharacterBubble
+              charIndex={displaySlots[0].charIndex}
+              playerName=""
+              posLeft={50}
+              bubbleDelayMs={12000}
+              gameActive={gameActive}
+              forceReactLine={reactingSlot === 0 ? reactingLine : (lossSlot === 0 ? lossLine : '')}
+            />
+          </>
+        )}
       </div>
     </div>
   );

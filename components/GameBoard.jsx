@@ -373,16 +373,16 @@ export default function GameBoard({ state, myId, onMove, error }) {
             {/* Mobile: last 3 (expandable) */}
             <div className="md:hidden">
               {[...(state.log ?? [])].reverse().slice(0, showFullLog ? undefined : 3).map((entry, i) => (
-                <div key={i} className={`text-xs leading-relaxed ${i === 0 ? "text-white/80" : "text-slate-600"}`}>
+                <div key={i} className={`leading-relaxed ${i === 0 ? "text-white/70" : "text-slate-600"}`} style={{ fontSize: 10 }}>
                   {i === 0 && <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 mb-0.5" />}
                   {entry}
                 </div>
               ))}
             </div>
-            {/* Desktop: all logs */}
+            {/* Desktop: last 12 log entries */}
             <div className="hidden md:block">
-              {[...(state.log ?? [])].reverse().map((entry, i) => (
-                <div key={i} className={`text-xs leading-relaxed ${i === 0 ? "text-white/80" : "text-slate-600"}`}>
+              {[...(state.log ?? [])].reverse().slice(0, 12).map((entry, i) => (
+                <div key={i} className={`leading-relaxed ${i === 0 ? "text-white/70" : "text-slate-600"}`} style={{ fontSize: 10 }}>
                   {i === 0 && <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 mb-0.5" />}
                   {entry}
                 </div>
@@ -420,8 +420,8 @@ export default function GameBoard({ state, myId, onMove, error }) {
               {!isMyTurn && <span className="ml-2 text-slate-600 normal-case font-normal">waiting for your turn…</span>}
             </div>
 
-            {/* Fan hand */}
-            <div className="relative flex items-end justify-center pb-2 pt-1 overflow-visible" style={{ height: 140, perspective: "900px", perspectiveOrigin: "50% 200%" }}>
+            {/* Fan hand — scaled up for easier reading */}
+            <div className="relative flex items-end justify-center pb-2 pt-1 overflow-visible" style={{ height: 175, perspective: "900px", perspectiveOrigin: "50% 200%", transform: "scale(1.15)", transformOrigin: "bottom center" }}>
               {(me?.hand ?? []).map((card, i) => {
                 const total  = me.hand.length;
                 const center = (total - 1) / 2;
