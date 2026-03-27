@@ -6,18 +6,36 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@neondatabase/auth": "^0.2.0-beta.1",
+    "@neondatabase/serverless": "^1.0.2",
+    "@tailwindcss/postcss": "^4.2.2",
     "@upstash/redis": "^1.37.0",
-    "next": "^14.2.35",
-    "react": "^18",
-    "react-dom": "^18",
-    "three": "^0.183.2"
+    "dotenv": "^17.3.1",
+    "drizzle-orm": "^0.45.2",
+    "ethers": "^6.16.0",
+    "framer-motion": "^12.38.0",
+    "next": "^16.2.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "three": "^0.183.2",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "autoprefixer": "^10",
-    "postcss": "^8",
-    "tailwindcss": "^3"
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "autoprefixer": "^10.4.27",
+    "drizzle-kit": "^0.31.10",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^6.0.2"
   }
 }
