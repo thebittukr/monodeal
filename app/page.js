@@ -144,14 +144,42 @@ export default function HomePage() {
             Property<span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">Rush</span>
           </h1>
           <p className="text-slate-400 text-sm sm:text-base mt-3 max-w-sm">
-            The fast property card game. Collect 3 sets to win.
+            Beat opponents. Collect 3 sets. Take the pot.
           </p>
+
+          {/* QUICK MATCH — the #1 conversion button */}
+          <button
+            onClick={() => {
+              const quickName = name.trim() || `Player${Math.floor(Math.random() * 999)}`;
+              setName(quickName);
+              localStorage.setItem("pr_avatar", avatarId.toString());
+              setLoading(true);
+              fetch("/api/game", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "createSoloRoom", playerName: quickName, avatarId }),
+              })
+                .then(r => r.json())
+                .then(data => {
+                  if (data.error) { setErr(data.error); setLoading(false); return; }
+                  sessionStorage.setItem(`pr_${data.roomId}_pid`, data.playerId);
+                  localStorage.setItem(`pr_${data.roomId}_pid`, data.playerId);
+                  setLoading(false);
+                  setPendingRoom({ roomId: data.roomId, playerId: data.playerId });
+                })
+                .catch(e => { setErr(e.message); setLoading(false); });
+            }}
+            disabled={loading}
+            className="mt-5 px-10 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-black text-lg transition-all shadow-xl shadow-emerald-500/25 hover:shadow-emerald-400/30 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+          >
+            {loading ? "Starting..." : "Play Now"}
+          </button>
+          <p className="text-slate-600 text-[10px] mt-1.5">Instant match vs bots &middot; no signup needed</p>
 
           {/* Feature pills */}
           <div className="flex flex-wrap gap-2 mt-4 justify-center">
             {[
               { icon: "👥", text: "2-4 Players" },
-              { icon: "⏱", text: "~15 min" },
+              { icon: "⏱", text: "~3 min games" },
               { icon: "🔒", text: "Provably Fair" },
               { icon: "💎", text: "Win Credits" },
             ].map((f) => (
@@ -160,6 +188,17 @@ export default function HomePage() {
               </span>
             ))}
           </div>
+        </div>
+
+        {/* ── Live Activity Bar ─────────────────────────────────────────── */}
+        <div className="flex items-center justify-center gap-4 sm:gap-6 py-2 px-4 text-[11px] text-slate-500">
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-emerald-400 font-bold">LIVE</span>
+          </span>
+          <span>Games today: <span className="text-white font-bold">--</span></span>
+          <span className="hidden sm:inline">Players online: <span className="text-white font-bold">--</span></span>
+          <span className="hidden sm:inline">Total won: <span className="text-amber-400 font-bold">--</span> credits</span>
         </div>
 
         {/* ── Main Content: two columns on desktop ──────────────────────── */}
@@ -403,13 +442,15 @@ export default function HomePage() {
                 PropertyRush is a skill-based card game. Not a gambling platform. Credits have no real-world cash value until withdrawn. 18+ only.
               </p>
               <div className="flex items-center gap-4 text-[10px] text-slate-700">
-                <a href="/fairness" className="hover:text-slate-400 transition">Fair Play</a>
+                <a href="/fairness" className="hover:text-slate-400 transition">Provably Fair</a>
+                <span>&middot;</span>
+                <a href="/responsible-gaming" className="hover:text-slate-400 transition">Responsible Gaming</a>
+                <span>&middot;</span>
+                <a href="/security" className="hover:text-slate-400 transition">Security</a>
                 <span>&middot;</span>
                 <span>Terms</span>
                 <span>&middot;</span>
                 <span>Privacy</span>
-                <span>&middot;</span>
-                <span>Support</span>
               </div>
             </div>
           </div>
