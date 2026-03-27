@@ -186,7 +186,7 @@ export default function RoomPage() {
 
     return (
       <div className="min-h-full flex flex-col items-center justify-center px-4 relative">
-        <CasinoBackground city={city} />
+        <CasinoBackground city={city} cheering={state?.phase === "ended"} />
         <div className="relative z-10 w-full flex flex-col items-center justify-center">
         <div className="w-full max-w-sm bg-slate-900/85 backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl p-8">
           <div className="text-center mb-6">
@@ -283,7 +283,7 @@ export default function RoomPage() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="h-full flex flex-col overflow-hidden relative">
-      <CasinoBackground city={city} />
+      <CasinoBackground city={city} cheering={state?.phase === "ended"} />
       <div className="relative z-10 h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-black/60 backdrop-blur-md border-b border-white/10 flex-shrink-0">

@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useMemo, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Stars, Float } from "@react-three/drei";
+import { Stars } from "@react-three/drei";
 import * as THREE from "three";
 
 // ── City theme configs ────────────────────────────────────────────────────────
@@ -19,58 +19,291 @@ export const CITY_CONFIGS = {
   sydney:     { label: "🦘 Sydney",           sky: "#00051a", neons: ["#ff8c00","#00aaff","#00ff7f"], fogDist: 35 },
 };
 
-// ── City skyline buildings ────────────────────────────────────────────────────
+// ── Deterministic RNG ────────────────────────────────────────────────────────
+const rng = (seed) => ((seed * 9301 + 49297) % 233280) / 233280;
+
+// ── Casino Table ──────────────────────────────────────────────────────────────
+function CasinoTable({ neons }) {
+  return (
+    <group position={[0, -1.35, 0.5]}>
+      {/* Main felt surface */}
+      <mesh receiveShadow>
+        <cylinderGeometry args={[4.2, 4.2, 0.18, 48]} />
+        <meshStandardMaterial color="#0c3d18" roughness={0.97} metalness={0.0} />
+      </mesh>
+
+      {/* Inner felt pattern */}
+      <mesh position={[0, 0.095, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0, 3.8, 48]} />
+        <meshStandardMaterial color="#0e4a1f" roughness={0.95} />
+      </mesh>
+
+      {/* Gold outer rim */}
+      <mesh position={[0, 0.07, 0]}>
+        <torusGeometry args={[4.2, 0.14, 10, 56]} />
+        <meshStandardMaterial color="#c9a227" metalness={0.85} roughness={0.25} emissive="#8B6914" emissiveIntensity={0.35} />
+      </mesh>
+
+      {/* Inner gold ring */}
+      <mesh position={[0, 0.095, 0]}>
+        <torusGeometry args={[3.7, 0.06, 8, 48]} />
+        <meshStandardMaterial color="#c9a227" metalness={0.8} roughness={0.3} emissive="#8B6914" emissiveIntensity={0.2} />
+      </mesh>
+
+      {/* Betting circle spots */}
+      {[0,1,2,3,4].map((i) => {
+        const a = (i / 5) * Math.PI * 2 + Math.PI * 0.1;
+        const r = 2.6;
+        return (
+          <mesh key={i} position={[Math.cos(a)*r, 0.1, Math.sin(a)*r]} rotation={[-Math.PI/2, 0, 0]}>
+            <ringGeometry args={[0.28, 0.34, 32]} />
+            <meshStandardMaterial color="#c9a227" emissive="#c9a227" emissiveIntensity={0.4} transparent opacity={0.7} />
+          </mesh>
+        );
+      })}
+
+      {/* Center dealer diamond */}
+      <mesh position={[0, 0.1, -1.2]} rotation={[-Math.PI/2, 0, Math.PI/4]}>
+        <ringGeometry args={[0, 0.4, 4]} />
+        <meshStandardMaterial color="#c9a227" emissive="#c9a227" emissiveIntensity={0.5} transparent opacity={0.6} />
+      </mesh>
+
+      {/* Table pedestal */}
+      <mesh position={[0, -0.6, 0]} castShadow>
+        <cylinderGeometry args={[0.55, 0.9, 0.9, 20]} />
+        <meshStandardMaterial color="#1a0d00" roughness={0.75} metalness={0.15} />
+      </mesh>
+      <mesh position={[0, -1.05, 0]}>
+        <cylinderGeometry args={[1.4, 1.4, 0.08, 20]} />
+        <meshStandardMaterial color="#1a0d00" roughness={0.8} metalness={0.1} />
+      </mesh>
+
+      {/* Chip stacks on table */}
+      {[[-3.5, 0.12, 0.8], [3.5, 0.12, 0.8], [-3.2, 0.12, -0.5], [3.2, 0.12, -0.5]].map(([x,y,z], i) => (
+        <group key={i} position={[x, y, z]}>
+          {[0,1,2,3].map((j) => (
+            <mesh key={j} position={[0, j * 0.055, 0]}>
+              <cylinderGeometry args={[0.18, 0.18, 0.05, 20]} />
+              <meshStandardMaterial
+                color={neons[j % neons.length]}
+                metalness={0.7} roughness={0.2}
+                emissive={neons[j % neons.length]} emissiveIntensity={0.2}
+              />
+            </mesh>
+          ))}
+        </group>
+      ))}
+
+      {/* Under-table neon glow */}
+      <pointLight position={[0, -0.3, 0]} color={neons[0]} intensity={1.5} distance={5} decay={2} />
+    </group>
+  );
+}
+
+// ── Stylized Girl Figure ──────────────────────────────────────────────────────
+function CrowdGirl({ position, rotation, dressColor, hairColor, phase, cheering = false }) {
+  const rootRef    = useRef();
+  const lArmRef    = useRef();
+  const rArmRef    = useRef();
+  const headRef    = useRef();
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime + phase;
+    if (!rootRef.current) return;
+
+    if (cheering) {
+      rootRef.current.position.y = position[1] + Math.abs(Math.sin(t * 5)) * 0.18;
+      rootRef.current.rotation.z = Math.sin(t * 5) * 0.06;
+      if (lArmRef.current) lArmRef.current.rotation.z = -0.4 - Math.abs(Math.sin(t * 5)) * 0.8;
+      if (rArmRef.current) rArmRef.current.rotation.z =  0.4 + Math.abs(Math.sin(t * 5)) * 0.8;
+      if (headRef.current) headRef.current.rotation.z = Math.sin(t * 5) * 0.08;
+    } else {
+      rootRef.current.position.y = position[1] + Math.sin(t * 0.9) * 0.018;
+      rootRef.current.rotation.z = Math.sin(t * 0.7) * 0.035;
+      if (lArmRef.current) lArmRef.current.rotation.z = -0.25 + Math.sin(t * 0.7) * 0.08;
+      if (rArmRef.current) rArmRef.current.rotation.z =  0.25 - Math.sin(t * 0.7) * 0.08;
+      if (headRef.current) headRef.current.rotation.y = Math.sin(t * 0.5) * 0.15;
+    }
+  });
+
+  const skin = "#f5c9a8";
+
+  return (
+    <group ref={rootRef} position={position} rotation={rotation}>
+      {/* Legs */}
+      {[-0.07, 0.07].map((x, i) => (
+        <mesh key={i} position={[x, -0.42, 0]}>
+          <cylinderGeometry args={[0.04, 0.035, 0.38, 8]} />
+          <meshStandardMaterial color={skin} roughness={0.75} />
+        </mesh>
+      ))}
+      {/* Shoes */}
+      {[-0.07, 0.07].map((x, i) => (
+        <mesh key={i} position={[x, -0.63, 0.04]}>
+          <boxGeometry args={[0.07, 0.06, 0.14]} />
+          <meshStandardMaterial color="#1a0a00" roughness={0.6} />
+        </mesh>
+      ))}
+
+      {/* Dress skirt */}
+      <mesh position={[0, -0.1, 0]}>
+        <cylinderGeometry args={[0.25, 0.30, 0.52, 10]} />
+        <meshStandardMaterial color={dressColor} roughness={0.7} emissive={dressColor} emissiveIntensity={0.12} />
+      </mesh>
+
+      {/* Dress bodice */}
+      <mesh position={[0, 0.25, 0]}>
+        <cylinderGeometry args={[0.14, 0.21, 0.32, 10]} />
+        <meshStandardMaterial color={dressColor} roughness={0.65} emissive={dressColor} emissiveIntensity={0.15} />
+      </mesh>
+
+      {/* Neck */}
+      <mesh position={[0, 0.46, 0]}>
+        <cylinderGeometry args={[0.04, 0.045, 0.1, 8]} />
+        <meshStandardMaterial color={skin} roughness={0.7} />
+      </mesh>
+
+      {/* Head */}
+      <group ref={headRef}>
+        <mesh position={[0, 0.62, 0]}>
+          <sphereGeometry args={[0.135, 16, 16]} />
+          <meshStandardMaterial color={skin} roughness={0.6} />
+        </mesh>
+        {/* Hair back */}
+        <mesh position={[0, 0.67, -0.02]}>
+          <sphereGeometry args={[0.145, 16, 16]} />
+          <meshStandardMaterial color={hairColor} roughness={0.92} />
+        </mesh>
+        {/* Hair top */}
+        <mesh position={[0, 0.79, 0]}>
+          <sphereGeometry args={[0.1, 14, 14]} />
+          <meshStandardMaterial color={hairColor} roughness={0.9} />
+        </mesh>
+        {/* Eyes hint */}
+        <mesh position={[-0.045, 0.63, 0.12]}>
+          <sphereGeometry args={[0.018, 8, 8]} />
+          <meshStandardMaterial color="#1a0a00" />
+        </mesh>
+        <mesh position={[0.045, 0.63, 0.12]}>
+          <sphereGeometry args={[0.018, 8, 8]} />
+          <meshStandardMaterial color="#1a0a00" />
+        </mesh>
+        {/* Smile */}
+        <mesh position={[0, 0.58, 0.125]} rotation={[0.3, 0, 0]}>
+          <torusGeometry args={[0.025, 0.006, 6, 12, Math.PI]} />
+          <meshStandardMaterial color="#c0706a" />
+        </mesh>
+      </group>
+
+      {/* Left arm */}
+      <group ref={lArmRef} position={[-0.19, 0.28, 0]}>
+        <mesh>
+          <cylinderGeometry args={[0.028, 0.022, 0.32, 8]} />
+          <meshStandardMaterial color={skin} roughness={0.7} />
+        </mesh>
+      </group>
+
+      {/* Right arm */}
+      <group ref={rArmRef} position={[0.19, 0.28, 0]}>
+        <mesh>
+          <cylinderGeometry args={[0.028, 0.022, 0.32, 8]} />
+          <meshStandardMaterial color={skin} roughness={0.7} />
+        </mesh>
+      </group>
+
+      {/* Dress sparkle glow */}
+      <pointLight position={[0, 0.1, 0.2]} color={dressColor} intensity={0.5} distance={1.8} decay={2} />
+    </group>
+  );
+}
+
+// ── Crowd of 5 girls around the table ────────────────────────────────────────
+function Crowd({ neons, cheering = false }) {
+  const dresses = [
+    neons[0], neons[1], neons[2 % neons.length],
+    neons[0], neons[1],
+  ];
+  const hairs = ["#1a0600","#3d2010","#0a0508","#2a1a0a","#180808"];
+
+  // Positions around the table, looking inward
+  const crowd = [
+    { pos: [-5.2, -1.35, 0.5],   rot: [0,  1.4, 0],  phase: 0    },
+    { pos: [ 5.2, -1.35, 0.5],   rot: [0, -1.4, 0],  phase: 1.3  },
+    { pos: [-3.8, -1.35, 4.2],   rot: [0,  0.5, 0],  phase: 2.1  },
+    { pos: [ 3.8, -1.35, 4.2],   rot: [0, -0.5, 0],  phase: 0.8  },
+    { pos: [  0,  -1.35, 5.5],   rot: [0,  Math.PI, 0], phase: 1.7 },
+  ];
+
+  return (
+    <>
+      {crowd.map((c, i) => (
+        <CrowdGirl
+          key={i}
+          position={c.pos}
+          rotation={c.rot}
+          dressColor={dresses[i]}
+          hairColor={hairs[i]}
+          phase={c.phase}
+          cheering={cheering}
+        />
+      ))}
+    </>
+  );
+}
+
+// ── City skyline ──────────────────────────────────────────────────────────────
 function Skyline({ neons }) {
-  const buildings = useMemo(() => {
-    const rng = (seed) => ((seed * 9301 + 49297) % 233280) / 233280;
-    return Array.from({ length: 32 }, (_, i) => ({
-      x: (rng(i * 7 + 1) - 0.5) * 70,
-      z: -18 - rng(i * 3 + 2) * 18,
-      w: 0.6 + rng(i * 11 + 3) * 2.2,
-      h: 2 + rng(i * 5 + 4) * 14,
-      d: 0.6 + rng(i * 13 + 5) * 1.8,
-      color: neons[i % neons.length],
-    }));
-  }, [neons.join(",")]);
+  const buildings = useMemo(() => Array.from({ length: 36 }, (_, i) => ({
+    x: (rng(i * 7 + 1) - 0.5) * 75,
+    z: -20 - rng(i * 3 + 2) * 22,
+    w: 0.5 + rng(i * 11 + 3) * 2.5,
+    h: 2.5 + rng(i * 5 + 4) * 15,
+    d: 0.5 + rng(i * 13 + 5) * 2,
+    color: neons[i % neons.length],
+    win: rng(i * 17 + 6),
+  })), [neons.join(",")]);
 
   return (
     <group>
       {buildings.map((b, i) => (
-        <group key={i} position={[b.x, b.h / 2 - 4, b.z]}>
-          {/* Building body */}
-          <mesh>
+        <group key={i} position={[b.x, b.h / 2 - 5, b.z]}>
+          <mesh castShadow>
             <boxGeometry args={[b.w, b.h, b.d]} />
-            <meshStandardMaterial color="#0a0a0a" emissive={b.color} emissiveIntensity={0.08} roughness={0.9} />
+            <meshStandardMaterial color="#080808" emissive={b.color} emissiveIntensity={0.07 + b.win * 0.06} roughness={0.9} />
           </mesh>
-          {/* Roof glow */}
-          <pointLight position={[0, b.h / 2, 0]} color={b.color} intensity={0.4} distance={4} />
+          {/* Window grid */}
+          {b.win > 0.5 && (
+            <mesh position={[0, 0, b.d / 2 + 0.01]}>
+              <planeGeometry args={[b.w * 0.85, b.h * 0.8]} />
+              <meshStandardMaterial color={b.color} emissive={b.color} emissiveIntensity={0.15} transparent opacity={0.25} />
+            </mesh>
+          )}
+          <pointLight position={[0, b.h / 2 + 0.2, 0]} color={b.color} intensity={0.6} distance={5} decay={2} />
         </group>
       ))}
     </group>
   );
 }
 
-// ── Floating playing card ─────────────────────────────────────────────────────
+// ── Floating card ─────────────────────────────────────────────────────────────
 function FloatingCard({ x, y, z, color, delay, rotDir = 1 }) {
   const ref = useRef();
   useFrame(({ clock }) => {
     if (!ref.current) return;
     const t = clock.elapsedTime + delay;
     ref.current.position.y = y + Math.sin(t * 0.4) * 0.35;
-    ref.current.rotation.y = t * 0.2 * rotDir;
-    ref.current.rotation.z = Math.sin(t * 0.25) * 0.15;
+    ref.current.rotation.y = t * 0.18 * rotDir;
+    ref.current.rotation.z = Math.sin(t * 0.3) * 0.12;
   });
   return (
     <group ref={ref} position={[x, y, z]}>
-      {/* Card face */}
-      <mesh>
-        <boxGeometry args={[0.6, 0.85, 0.015]} />
-        <meshStandardMaterial color="#faf8f0" emissive="#ffffff" emissiveIntensity={0.05} roughness={0.4} metalness={0.1} />
+      <mesh castShadow>
+        <boxGeometry args={[0.62, 0.88, 0.016]} />
+        <meshStandardMaterial color="#f8f5ee" emissive="#ffffff" emissiveIntensity={0.04} roughness={0.3} metalness={0.12} />
       </mesh>
-      {/* Card color stripe */}
-      <mesh position={[0, 0.1, 0.009]}>
-        <boxGeometry args={[0.5, 0.6, 0.001]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
+      <mesh position={[0, 0.1, 0.01]}>
+        <boxGeometry args={[0.52, 0.64, 0.001]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.55} />
       </mesh>
     </group>
   );
@@ -82,137 +315,149 @@ function Chip({ x, y, z, color, delay }) {
   useFrame(({ clock }) => {
     if (!ref.current) return;
     const t = clock.elapsedTime + delay;
-    ref.current.rotation.y += 0.008;
-    ref.current.position.y = y + Math.sin(t * 0.5) * 0.2;
+    ref.current.rotation.y += 0.009;
+    ref.current.position.y = y + Math.sin(t * 0.45) * 0.18;
   });
   return (
     <group ref={ref} position={[x, y, z]}>
       <mesh>
-        <cylinderGeometry args={[0.22, 0.22, 0.07, 32]} />
-        <meshStandardMaterial color={color} metalness={0.8} roughness={0.15} emissive={color} emissiveIntensity={0.25} />
+        <cylinderGeometry args={[0.23, 0.23, 0.072, 32]} />
+        <meshStandardMaterial color={color} metalness={0.82} roughness={0.12} emissive={color} emissiveIntensity={0.28} />
       </mesh>
-      {/* Stripe ring */}
       <mesh>
-        <torusGeometry args={[0.2, 0.025, 8, 32]} />
-        <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.3} />
+        <torusGeometry args={[0.21, 0.027, 8, 32]} />
+        <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.35} />
       </mesh>
     </group>
   );
 }
 
 // ── Ambient particles ─────────────────────────────────────────────────────────
-function Particles({ count = 120, color }) {
+function Particles({ count = 140, color }) {
   const ref = useRef();
-  const { positions, colors: colorsArr } = useMemo(() => {
-    const positions = new Float32Array(count * 3);
-    const colors    = new Float32Array(count * 3);
+  const { pos, col } = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    const col = new Float32Array(count * 3);
     const c = new THREE.Color(color);
     for (let i = 0; i < count; i++) {
-      positions[i * 3]     = (Math.random() - 0.5) * 30;
-      positions[i * 3 + 1] = Math.random() * 8 - 1;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 30;
-      colors[i * 3]     = c.r + (Math.random() - 0.5) * 0.4;
-      colors[i * 3 + 1] = c.g + (Math.random() - 0.5) * 0.4;
-      colors[i * 3 + 2] = c.b + (Math.random() - 0.5) * 0.4;
+      pos[i*3]   = (Math.random() - 0.5) * 32;
+      pos[i*3+1] = Math.random() * 10 - 1.5;
+      pos[i*3+2] = (Math.random() - 0.5) * 32;
+      col[i*3]   = c.r + (Math.random() - 0.5) * 0.35;
+      col[i*3+1] = c.g + (Math.random() - 0.5) * 0.35;
+      col[i*3+2] = c.b + (Math.random() - 0.5) * 0.35;
     }
-    return { positions, colors };
+    return { pos, col };
   }, [count, color]);
 
   useFrame(({ clock }) => {
-    if (!ref.current) return;
-    ref.current.rotation.y = clock.elapsedTime * 0.015;
+    if (ref.current) ref.current.rotation.y = clock.elapsedTime * 0.012;
   });
 
   return (
     <points ref={ref}>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-        <bufferAttribute attach="attributes-color" args={[colorsArr, 3]} />
+        <bufferAttribute attach="attributes-position" args={[pos, 3]} />
+        <bufferAttribute attach="attributes-color" args={[col, 3]} />
       </bufferGeometry>
-      <pointsMaterial size={0.06} vertexColors transparent opacity={0.7} sizeAttenuation />
+      <pointsMaterial size={0.055} vertexColors transparent opacity={0.75} sizeAttenuation />
     </points>
   );
 }
 
-// ── Neon ground ring ─────────────────────────────────────────────────────────
-function GroundRing({ color }) {
+// ── Spotlight beams from ceiling ─────────────────────────────────────────────
+function SpotBeam({ x, z, color, delay }) {
   const ref = useRef();
   useFrame(({ clock }) => {
     if (!ref.current) return;
-    ref.current.rotation.z = clock.elapsedTime * 0.05;
+    const t = clock.elapsedTime * 0.18 + delay;
+    ref.current.rotation.y = t;
+    ref.current.rotation.x = Math.sin(t * 0.7) * 0.15;
   });
   return (
-    <group ref={ref} position={[0, -1.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      {[6, 10, 14].map((r, i) => (
+    <group ref={ref} position={[x, 6, z]}>
+      <mesh>
+        <coneGeometry args={[0.06, 14, 8, 1, true]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} transparent opacity={0.055} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+      <pointLight color={color} intensity={0.6} distance={8} decay={2} />
+    </group>
+  );
+}
+
+// ── Neon rings ────────────────────────────────────────────────────────────────
+function GroundRings({ color }) {
+  const ref = useRef();
+  useFrame(({ clock }) => {
+    if (ref.current) ref.current.rotation.z = clock.elapsedTime * 0.04;
+  });
+  return (
+    <group ref={ref} position={[0, -1.5, 0]} rotation={[-Math.PI/2, 0, 0]}>
+      {[7, 12, 17].map((r, i) => (
         <mesh key={i}>
-          <ringGeometry args={[r - 0.05, r + 0.05, 64]} />
-          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3 - i * 0.08} transparent opacity={0.5 - i * 0.1} />
+          <ringGeometry args={[r - 0.06, r + 0.06, 64]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.28 - i * 0.07} transparent opacity={0.45 - i * 0.1} depthWrite={false} />
         </mesh>
       ))}
     </group>
   );
 }
 
-// ── Light beams ──────────────────────────────────────────────────────────────
-function LightBeam({ angle, color }) {
-  const ref = useRef();
-  useFrame(({ clock }) => {
-    if (!ref.current) return;
-    ref.current.rotation.y = clock.elapsedTime * 0.15 + angle;
-  });
-  return (
-    <group ref={ref} position={[0, -1, 0]}>
-      <mesh rotation={[0, 0, Math.PI / 2 - 0.3]}>
-        <coneGeometry args={[0.08, 12, 8, 1, true]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} transparent opacity={0.06} side={THREE.DoubleSide} />
-      </mesh>
-    </group>
-  );
-}
-
-// ── Main 3D Scene ─────────────────────────────────────────────────────────────
-function Scene({ config }) {
+// ── Main scene ────────────────────────────────────────────────────────────────
+function Scene({ config, cheering }) {
   const { sky, neons, fogDist } = config;
   const [n0, n1, n2] = neons;
 
-  const floatingCards = useMemo(() => Array.from({ length: 10 }, (_, i) => ({
-    x: (Math.random() - 0.5) * 14,
-    y: 0.5 + Math.random() * 2.5,
-    z: -2.5 - Math.random() * 9,
+  const floatingCards = useMemo(() => Array.from({ length: 8 }, (_, i) => ({
+    x: (rng(i * 11 + 1) - 0.5) * 13,
+    y: 0.6 + rng(i * 7 + 2) * 2,
+    z: -3 - rng(i * 5 + 3) * 8,
     color: neons[i % neons.length],
-    delay: i * 0.8,
+    delay: i * 0.9,
     rotDir: i % 2 === 0 ? 1 : -1,
   })), [neons.join(",")]);
 
-  const chips = useMemo(() => Array.from({ length: 14 }, (_, i) => ({
-    x: (Math.random() - 0.5) * 12,
-    y: Math.random() * 1.5 - 0.5,
-    z: -1.5 - Math.random() * 7,
+  const chips = useMemo(() => Array.from({ length: 10 }, (_, i) => ({
+    x: (rng(i * 13 + 4) - 0.5) * 11,
+    y: rng(i * 9 + 5) * 1.2 - 0.5,
+    z: -2 - rng(i * 7 + 6) * 6,
     color: neons[i % neons.length],
-    delay: i * 0.6,
+    delay: i * 0.65,
   })), [neons.join(",")]);
 
   return (
     <>
-      {/* Sky + Fog */}
       <color attach="background" args={[sky]} />
-      <fog attach="fog" args={[sky, 12, fogDist]} />
+      <fog attach="fog" args={[sky, 14, fogDist]} />
 
       {/* Lighting */}
-      <ambientLight intensity={0.15} color={n0} />
-      <pointLight position={[0, 6, 0]}    intensity={3}   color={n1} distance={35} decay={2} />
-      <pointLight position={[-10, 4, -6]} intensity={2}   color={n0} distance={25} decay={2} />
-      <pointLight position={[10, 4, -6]}  intensity={2}   color={n2 ?? n0} distance={25} decay={2} />
-      <pointLight position={[0, -0.5, 4]} intensity={1.5} color={n1} distance={15} decay={2} />
+      <ambientLight intensity={0.18} color={n0} />
+      <pointLight position={[0, 8, 0]}    intensity={3.5}  color={n1}       distance={40} decay={2} />
+      <pointLight position={[-12, 5, -4]} intensity={2.2}  color={n0}       distance={28} decay={2} />
+      <pointLight position={[ 12, 5, -4]} intensity={2.2}  color={n2 ?? n0} distance={28} decay={2} />
+      <pointLight position={[0,   2,  6]} intensity={2.0}  color={n1}       distance={18} decay={2} />
+      {/* Table fill light */}
+      <pointLight position={[0,   2,  0.5]} intensity={3.0} color="#ffffff"  distance={10} decay={2} />
+
+      {/* Spotbeams */}
+      <SpotBeam x={-3} z={-2} color={n0} delay={0}   />
+      <SpotBeam x={ 3} z={-2} color={n1} delay={2.1} />
+      <SpotBeam x={ 0} z={ 2} color={n2 ?? n0} delay={4.2} />
 
       {/* Stars */}
-      <Stars radius={80} depth={40} count={2500} factor={3.5} fade speed={0.4} />
+      <Stars radius={90} depth={45} count={2800} factor={3.8} fade speed={0.35} />
 
-      {/* Ground — dark green felt */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.5, 0]}>
-        <planeGeometry args={[80, 80, 1, 1]} />
-        <meshStandardMaterial color="#071209" roughness={0.98} metalness={0.0} />
+      {/* Ground */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2.3, 0]} receiveShadow>
+        <planeGeometry args={[100, 100]} />
+        <meshStandardMaterial color="#050d08" roughness={0.99} />
       </mesh>
+
+      {/* Casino table */}
+      <CasinoTable neons={neons} />
+
+      {/* Crowd */}
+      <Crowd neons={neons} cheering={cheering} />
 
       {/* City skyline */}
       <Skyline neons={neons} />
@@ -220,48 +465,46 @@ function Scene({ config }) {
       {/* Floating cards */}
       {floatingCards.map((c, i) => <FloatingCard key={i} {...c} />)}
 
-      {/* Poker chips */}
+      {/* Chips */}
       {chips.map((c, i) => <Chip key={i} {...c} />)}
 
       {/* Particles */}
-      <Particles count={100} color={n0} />
+      <Particles count={120} color={n0} />
 
-      {/* Ground neon rings */}
-      <GroundRing color={n0} />
-
-      {/* Light beams */}
-      <LightBeam angle={0}    color={n1} />
-      <LightBeam angle={2.1}  color={n2 ?? n0} />
-      <LightBeam angle={4.2}  color={n0} />
+      {/* Neon rings */}
+      <GroundRings color={n0} />
     </>
   );
 }
 
-// ── Camera gentle orbit ───────────────────────────────────────────────────────
-function CameraRig() {
+// ── Cinematic camera ─────────────────────────────────────────────────────────
+function CinematicCamera() {
   useFrame(({ camera, clock }) => {
     const t = clock.elapsedTime;
-    camera.position.x = Math.sin(t * 0.04) * 0.8;
-    camera.position.y = 2 + Math.sin(t * 0.06) * 0.3;
-    camera.lookAt(0, 0, 0);
+    // Slow breathing + drift
+    camera.position.x = Math.sin(t * 0.035) * 1.2;
+    camera.position.y = 2.2 + Math.sin(t * 0.05) * 0.45;
+    camera.position.z = 8.5 + Math.sin(t * 0.028) * 0.6;
+    camera.lookAt(0, -0.3, 0);
   });
   return null;
 }
 
-// ── Public component ──────────────────────────────────────────────────────────
-export default function CasinoBackground({ city = "lasvegas" }) {
+// ── Public export ─────────────────────────────────────────────────────────────
+export default function CasinoBackground({ city = "lasvegas", cheering = false }) {
   const config = CITY_CONFIGS[city] ?? CITY_CONFIGS.lasvegas;
 
   return (
     <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden="true">
       <Canvas
-        camera={{ position: [0, 2, 9], fov: 55, near: 0.1, far: 200 }}
-        gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
+        shadows
+        camera={{ position: [0, 2.2, 8.5], fov: 52, near: 0.1, far: 250 }}
+        gl={{ antialias: true, alpha: false, powerPreference: "high-performance", toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.1 }}
         dpr={[1, 1.5]}
       >
         <Suspense fallback={null}>
-          <Scene config={config} />
-          <CameraRig />
+          <Scene config={config} cheering={cheering} />
+          <CinematicCamera />
         </Suspense>
       </Canvas>
     </div>

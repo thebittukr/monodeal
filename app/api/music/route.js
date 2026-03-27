@@ -15,52 +15,52 @@ const CITY_QUERIES = {
   sydney:     "smooth jazz lounge chill",
 };
 
-// Curated fallback tracks from Pixabay's free CDN (no key needed)
-// These are real publicly-accessible Pixabay free music tracks
+// Free, permanently hosted demo tracks — no API key needed
+// Full Pixabay integration activates with PIXABAY_API_KEY in .env.local
 const FALLBACK = {
   lasvegas:   [
-    { title: "Casino Lounge",        url: "https://cdn.pixabay.com/audio/2022/10/18/audio_2dde668d05.mp3" },
-    { title: "Jazz Piano Bar",       url: "https://cdn.pixabay.com/audio/2022/08/04/audio_2dde668d05.mp3" },
+    { title: "Neon Strip Groove",      artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"  },
+    { title: "High Roller Lounge",     artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"  },
   ],
   tokyo:      [
-    { title: "Japanese Ambient",     url: "https://cdn.pixabay.com/audio/2022/01/18/audio_d0a13f69d2.mp3" },
-    { title: "Zen Garden",           url: "https://cdn.pixabay.com/audio/2021/11/25/audio_91b5c59c79.mp3" },
+    { title: "Neon Garden Drift",      artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"  },
+    { title: "Cherry Blossom Night",   artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"  },
   ],
   macau:      [
-    { title: "Oriental Night",       url: "https://cdn.pixabay.com/audio/2023/03/21/audio_c1e9fc12a8.mp3" },
-    { title: "Chinese Jazz",         url: "https://cdn.pixabay.com/audio/2022/08/23/audio_d16737dc28.mp3" },
+    { title: "Dragon Palace Nights",   artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"  },
+    { title: "Oriental Fortune",       artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3" },
   ],
   montecarlo: [
-    { title: "Monte Carlo Elegance", url: "https://cdn.pixabay.com/audio/2022/12/17/audio_d8c2b4cc28.mp3" },
-    { title: "French Piano Lounge",  url: "https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3" },
+    { title: "Riviera Elegance",       artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"  },
+    { title: "Grand Prix Lounge",      artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3" },
   ],
   singapore:  [
-    { title: "Singapore Nights",     url: "https://cdn.pixabay.com/audio/2022/10/25/audio_8e3c4a0e2b.mp3" },
-    { title: "Asia Modern Chill",    url: "https://cdn.pixabay.com/audio/2022/03/15/audio_c73e38a8d2.mp3" },
+    { title: "Marina Bay Glow",        artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"  },
+    { title: "Gardens by Night",       artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3" },
   ],
   atlantic:   [
-    { title: "Atlantic Boardwalk",   url: "https://cdn.pixabay.com/audio/2022/10/31/audio_dfc06b7da2.mp3" },
-    { title: "Smooth Jazz Night",    url: "https://cdn.pixabay.com/audio/2021/09/06/audio_2f524e2378.mp3" },
+    { title: "Boardwalk Swagger",      artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"  },
+    { title: "Seaside Stakes",         artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"  },
   ],
   badenbaden: [
-    { title: "Grand Waltz",          url: "https://cdn.pixabay.com/audio/2022/11/22/audio_febc508520.mp3" },
-    { title: "Classical Evening",    url: "https://cdn.pixabay.com/audio/2021/10/05/audio_f1dba43d90.mp3" },
+    { title: "Black Forest Waltz",     artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3" },
+    { title: "Grand Spa Concerto",     artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" },
   ],
   sanjose:    [
-    { title: "Latin Jazz Fiesta",    url: "https://cdn.pixabay.com/audio/2022/07/25/audio_cd56b6f54e.mp3" },
-    { title: "Bossa Nova Chill",     url: "https://cdn.pixabay.com/audio/2021/08/09/audio_45852ac45b.mp3" },
+    { title: "Tropical Hacienda",      artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3" },
+    { title: "Latin Quarter Groove",   artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3" },
   ],
   paradise:   [
-    { title: "Paradise Beach",       url: "https://cdn.pixabay.com/audio/2022/08/02/audio_4bcf72ec16.mp3" },
-    { title: "Tropical Lounge",      url: "https://cdn.pixabay.com/audio/2021/11/01/audio_cb0f231032.mp3" },
+    { title: "Paradise Shuffle",       artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-17.mp3" },
+    { title: "Blue Lagoon Lounge",     artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"  },
   ],
   london:     [
-    { title: "London Jazz Club",     url: "https://cdn.pixabay.com/audio/2022/09/14/audio_e3b18c51a1.mp3" },
-    { title: "Thames Evening",       url: "https://cdn.pixabay.com/audio/2021/12/20/audio_d6b5c80862.mp3" },
+    { title: "Thames Twilight Jazz",   artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"  },
+    { title: "Mayfair Club Vibes",     artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"  },
   ],
   sydney:     [
-    { title: "Sydney Harbour Chill", url: "https://cdn.pixabay.com/audio/2022/06/08/audio_dd6f327b79.mp3" },
-    { title: "Harbour Bridge Lounge",url: "https://cdn.pixabay.com/audio/2021/07/15/audio_ca6c1d0d6e.mp3" },
+    { title: "Harbour Bridge Sunset",  artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"  },
+    { title: "Opera House Sessions",   artist: "SoundHelix",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"  },
   ],
 };
 

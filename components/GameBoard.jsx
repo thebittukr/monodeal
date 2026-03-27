@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Card from "./Card";
 import AssetDisplay from "./AssetDisplay";
 import ActionModal from "./ActionModal";
@@ -19,7 +19,14 @@ export default function GameBoard({ state, myId, onMove, error }) {
   const [actionError,    setActionError]    = useState(null);
   const [flipWildCard,   setFlipWildCard]   = useState(null);   // { card, fromColor }
   const [showFullLog,    setShowFullLog]    = useState(false);
+  const [cheering,       setCheering]       = useState(false);
 
+  // Cheer when game ends
+  useEffect(() => {
+    if (state?.phase === "ended") {
+      setCheering(true);
+    }
+  }, [state?.phase]);
 
   if (!state) return <LoadingScreen />;
 
@@ -343,7 +350,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
           </div>
 
           {/* MY HAND ZONE */}
-          <div className="bg-slate-900/75 backdrop-blur-sm flex-shrink-0">
+          <div className="bg-slate-900/75 backdrop-blur-sm flex-shrink-0 overflow-visible">
             {/* Errors */}
             {(error || actionError) && (
               <div className="mx-3 mt-2 px-3 py-1.5 rounded-xl bg-red-900/60 border border-red-500/30 text-red-300 text-xs">
@@ -372,22 +379,40 @@ export default function GameBoard({ state, myId, onMove, error }) {
               {!isMyTurn && <span className="ml-2 text-slate-600 normal-case font-normal">waiting for your turn…</span>}
             </div>
 
-            {/* Cards */}
-            <div className="card-hand-scroll flex gap-2 px-3 pb-4">
-              {(me?.hand ?? []).map((card) => (
-                <Card
-                  key={card.id}
-                  card={card}
-                  selected={selectedCard?.id === card.id}
-                  onClick={() => handleCardClick(card)}
-                  dimmed={
-                    (!isMyTurn || state.phase !== "playing" || !!state.pendingAction || playsLeft <= 0)
-                    && selectedCard?.id !== card.id
-                  }
-                />
-              ))}
+            {/* Fan hand */}
+            <div className="relative flex items-end justify-center pb-2 pt-1 overflow-visible" style={{ height: 140, perspective: "900px", perspectiveOrigin: "50% 200%" }}>
+              {(me?.hand ?? []).map((card, i) => {
+                const total  = me.hand.length;
+                const center = (total - 1) / 2;
+                const offset = i - center;
+                const spread = Math.min(38, 260 / Math.max(total, 1));
+                const tilt   = offset * (total <= 4 ? 5 : total <= 7 ? 7 : 9);
+                const tx     = offset * spread;
+                const ty     = Math.abs(offset) * 2.5;
+                const isSelected = selectedCard?.id === card.id;
+                const canPlay = isMyTurn && state.phase === "playing" && !state.pendingAction && playsLeft > 0;
+                return (
+                  <div
+                    key={card.id}
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: "50%",
+                      transformOrigin: "50% 130%",
+                      transform: `translateX(calc(-50% + ${tx}px)) translateY(${ty - (isSelected ? 18 : 0)}px) rotateZ(${tilt}deg) rotateX(${isSelected ? -12 : 2}deg) scale(${isSelected ? 1.08 : 1})`,
+                      transition: "transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s ease",
+                      zIndex: isSelected ? total + 10 : i + 1,
+                      cursor: canPlay ? "pointer" : "default",
+                      filter: (!canPlay && selectedCard?.id !== card.id) ? "brightness(0.55) saturate(0.6)" : "none",
+                    }}
+                    onClick={() => handleCardClick(card)}
+                  >
+                    <Card card={card} selected={isSelected} dimmed={false} />
+                  </div>
+                );
+              })}
               {!me?.hand?.length && (
-                <div className="text-slate-600 text-xs italic py-4 pl-1">No cards in hand</div>
+                <div className="text-slate-600 text-xs italic absolute bottom-4">No cards in hand</div>
               )}
             </div>
           </div>
