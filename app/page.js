@@ -28,6 +28,7 @@ export default function HomePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       sessionStorage.setItem(`pr_${data.roomId}_pid`, data.playerId);
+      localStorage.setItem(`pr_${data.roomId}_pid`, data.playerId);
       router.push(`/room/${data.roomId}`);
     } catch (e) { setErr(e.message); setLoading(false); }
   }
@@ -46,6 +47,7 @@ export default function HomePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       sessionStorage.setItem(`pr_${code}_pid`, data.playerId);
+      localStorage.setItem(`pr_${code}_pid`, data.playerId);
       router.push(`/room/${code}`);
     } catch (e) { setErr(e.message); setLoading(false); }
   }

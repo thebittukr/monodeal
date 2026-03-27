@@ -30,8 +30,11 @@ export default function RoomPage() {
 
   // ── Identity ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    const pid = sessionStorage.getItem(`pr_${roomId}_pid`);
+    const pid = sessionStorage.getItem(`pr_${roomId}_pid`)
+             ?? localStorage.getItem(`pr_${roomId}_pid`);
     if (!pid) { router.push("/"); return; }
+    // Restore into sessionStorage in case only localStorage had it (after refresh)
+    sessionStorage.setItem(`pr_${roomId}_pid`, pid);
     setMyId(pid);
     myIdRef.current = pid;
   }, [roomId, router]);
