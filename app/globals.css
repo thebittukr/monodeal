@@ -77,3 +77,8 @@ html, body {
   from { transform: translateY(0) scale(1); opacity: 1; }
   to   { transform: translateY(-80px) scale(0.7) rotateX(40deg); opacity: 0; }
 }
+
+@keyframes musicBar {
+  from { height: 3px; }
+  to   { height: 14px; }
+}

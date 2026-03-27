@@ -3,6 +3,8 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import GameBoard from "@/components/GameBoard";
 import CasinoBackground from "@/components/CasinoBackground";
+import MusicPlayer from "@/components/MusicPlayer";
+import { getMusicPlayer } from "@/lib/pixabayMusic";
 
 const POLL_INTERVAL       = 2000;  // 2 s — halves Redis usage, still fast enough
 const MAX_PLAYERS         = 4;
@@ -45,10 +47,30 @@ export default function RoomPage() {
 
   // ── Sound ─────────────────────────────────────────────────────────────────
   useEffect(() => {
+    if (!soundOn) {
+      // Stop Pixabay music when turning off
+      if (typeof window !== "undefined") getMusicPlayer().stop();
+      return;
+    }
+    // Enable SFX via Web Audio
+    import("@/lib/sounds").then((m) => {
+      soundsRef.current = m;
+      m.setMusicEnabled(true);  // enables SFX
+      m.stopMusic();             // silence procedural chiptune
+    });
+    // Start Pixabay music
+    const p = getMusicPlayer();
+    p.play();
+    p.loadCity(city ?? "lasvegas");
+    return () => p.stop();
+  }, [soundOn]); // eslint-disable-line
+
+  // ── Reload music on city change ────────────────────────────────────────────
+  useEffect(() => {
     if (!soundOn) return;
-    import("@/lib/sounds").then((m) => { soundsRef.current = m; m.setMusicEnabled(true); });
-    return () => soundsRef.current?.stopMusic?.();
-  }, [soundOn]);
+    const p = getMusicPlayer();
+    p.loadCity(city);
+  }, [city]); // eslint-disable-line
 
   // ── Polling ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -222,6 +244,16 @@ export default function RoomPage() {
               {reconnecting ? "Reconnecting…" : `Auto-starts when all ${cap} players join`}
             </span>
           </div>
+
+          <div className="flex items-center gap-2 justify-center mt-3">
+            <button
+              onClick={() => setSoundOn((v) => !v)}
+              className="px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-white/10 text-sm transition-colors"
+            >
+              {soundOn ? "🔊" : "🔇"}
+            </button>
+            {soundOn && <MusicPlayer city={city} enabled={soundOn} onToggle={() => setSoundOn(false)} />}
+          </div>
         </div>
 
         <button
@@ -279,6 +311,7 @@ export default function RoomPage() {
           >
             {soundOn ? "🔊" : "🔇"}
           </button>
+          {soundOn && <MusicPlayer city={city} enabled={soundOn} onToggle={() => setSoundOn((v) => !v)} />}
           <button
             onClick={() => { if (window.confirm("Leave the game? Your progress will be lost.")) router.push("/"); }}
             className="px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-red-900/60 border border-white/10 text-slate-500 hover:text-red-400 text-xs transition-colors"
