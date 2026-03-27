@@ -1,10 +1,14 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import CasinoBackground from "@/components/CasinoBackground";
 import { CITY_CONFIGS } from "@/components/CasinoBackground";
 import AvatarPicker from "@/components/AvatarPicker";
 import { DEFAULT_AVATAR_ID } from "@/lib/avatars";
+import dynamic from "next/dynamic";
+
+// Load intro overlay only client-side (needs WebGL)
+const IntroOverlay = dynamic(() => import("@/components/IntroOverlay"), { ssr: false });
 
 const COLOR_PILLS = [
   { color: "#ef4444" }, { color: "#3b82f6" }, { color: "#22c55e" },
@@ -22,6 +26,8 @@ export default function HomePage() {
   const [activeGame, setActiveGame] = useState(null); // { roomId, playerId, phase }
   const [city,       setCity]       = useState("lasvegas");
   const [avatarId,   setAvatarId]   = useState(DEFAULT_AVATAR_ID);
+  // pendingRoom: set after API succeeds, triggers intro overlay before navigating
+  const [pendingRoom, setPendingRoom] = useState(null); // { roomId, playerId }
 
   // ── Check localStorage for an active game to rejoin ─────────────────────
   useEffect(() => {
@@ -58,6 +64,12 @@ export default function HomePage() {
     })();
   }, []);
 
+  // Called when intro overlay finishes — navigate to the room
+  const handleIntroDone = useCallback(() => {
+    if (!pendingRoom) return;
+    router.push(`/room/${pendingRoom.roomId}`);
+  }, [pendingRoom, router]);
+
   async function handleCreate() {
     if (!name.trim()) { setErr("Enter your name first"); return; }
     setErr(""); setLoading(true);
@@ -72,7 +84,8 @@ export default function HomePage() {
       if (!res.ok) throw new Error(data.error);
       sessionStorage.setItem(`pr_${data.roomId}_pid`, data.playerId);
       localStorage.setItem(`pr_${data.roomId}_pid`, data.playerId);
-      router.push(`/room/${data.roomId}`);
+      setLoading(false);
+      setPendingRoom({ roomId: data.roomId, playerId: data.playerId });
     } catch (e) { setErr(e.message); setLoading(false); }
   }
 
@@ -90,7 +103,8 @@ export default function HomePage() {
       if (!res.ok) throw new Error(data.error);
       sessionStorage.setItem(`pr_${data.roomId}_pid`, data.playerId);
       localStorage.setItem(`pr_${data.roomId}_pid`, data.playerId);
-      router.push(`/room/${data.roomId}`);
+      setLoading(false);
+      setPendingRoom({ roomId: data.roomId, playerId: data.playerId });
     } catch (e) { setErr(e.message); setLoading(false); }
   }
 
@@ -110,12 +124,16 @@ export default function HomePage() {
       if (!res.ok) throw new Error(data.error);
       sessionStorage.setItem(`pr_${code}_pid`, data.playerId);
       localStorage.setItem(`pr_${code}_pid`, data.playerId);
-      router.push(`/room/${code}`);
+      setLoading(false);
+      setPendingRoom({ roomId: code, playerId: data.playerId });
     } catch (e) { setErr(e.message); setLoading(false); }
   }
 
   return (
     <div className="min-h-full flex flex-col relative">
+      {/* Intro overlay — shown after create/join until girl finishes her line */}
+      {pendingRoom && <IntroOverlay onDone={handleIntroDone} />}
+
       <CasinoBackground city={city} />
       <div className="relative z-10 flex flex-col min-h-full">
       <div className="flex flex-col items-center pt-5 sm:pt-12 pb-3 sm:pb-6 px-4 text-center">
