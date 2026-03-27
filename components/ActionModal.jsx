@@ -21,12 +21,14 @@ const COLOR_DOT_HEX = {
  *  "pick-force-deal" — choose your prop + opponent prop to swap (Force Deal)
  *  "respond"         — target player responds to incoming action
  *  "discard"         — player selects cards to discard (hand > 7 at end of turn)
+ *  "flip-wild"       — player picks new color for a wild card already on the table
  */
 export default function ActionModal({
   mode,
   card,
   myAssets = {},
   myHand = [],
+  fromColor = null,   // for flip-wild: the current color of the wild card
   opponentAssets = {},
   opponentName = "Opponent",
   myName = "You",
@@ -98,6 +100,15 @@ export default function ActionModal({
             myName={myName}
             onConfirm={({ targetColor, targetCardId, myColor, myCardId }) =>
               onConfirm({ targetColor, targetCardId, myColor, myCardId })}
+            onCancel={onCancel}
+          />
+        )}
+
+        {mode === "flip-wild" && card && (
+          <FlipWild
+            card={card}
+            fromColor={fromColor}
+            onConfirm={(toColor) => onConfirm({ toColor })}
             onCancel={onCancel}
           />
         )}
@@ -555,6 +566,46 @@ function RespondToAction({ pendingAction, attackerName, hasJustSayNo, onAccept, 
           Accept
         </button>
       </div>
+    </div>
+  );
+}
+
+function FlipWild({ card, fromColor, onConfirm, onCancel }) {
+  const eligible = (card.colors ?? Object.keys(COLORS)).filter((c) => c !== fromColor);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="text-center">
+        <div className="text-3xl mb-2">🔀</div>
+        <h3 className="text-white font-bold text-lg">Move Wild Property</h3>
+        <p className="text-slate-400 text-sm mt-1">
+          Currently in <strong className="text-white">{COLORS[fromColor]?.label}</strong> — choose a new color group
+        </p>
+        <p className="text-slate-500 text-xs mt-0.5">Free move · doesn't cost a play</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+        {eligible.map((color) => {
+          const meta = COLORS[color];
+          return (
+            <button
+              key={color}
+              onClick={() => onConfirm(color)}
+              className="flex items-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+            >
+              <ColorDot color={color} />
+              <div className="text-left">
+                <div className="text-white font-semibold text-sm">{meta.label}</div>
+                <div className="text-slate-400 text-xs">Set of {meta.setSize}</div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <button onClick={onCancel} className="w-full py-2.5 rounded-xl border border-white/20 text-white/70 font-semibold hover:bg-white/5 transition-colors">
+        Cancel
+      </button>
     </div>
   );
 }

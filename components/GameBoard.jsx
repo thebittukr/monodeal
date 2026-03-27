@@ -13,10 +13,12 @@ const NEEDS_TARGET_PLAYER  = new Set(["debtcollector","identityswap","taxtherich
 const NEEDS_FURTHER_INPUT  = { slydeal: "pick-property", dealbreaker: "pick-set", wreckingball: "pick-set", forceddeal: "pick-force-deal" };
 
 export default function GameBoard({ state, myId, onMove, error }) {
-  const [selectedCard, setSelectedCard] = useState(null);
-  const [modalMode,    setModalMode]    = useState(null);
-  const [targetPlayer, setTargetPlayer] = useState(null);
-  const [actionError,  setActionError]  = useState(null);
+  const [selectedCard,   setSelectedCard]   = useState(null);
+  const [modalMode,      setModalMode]      = useState(null);
+  const [targetPlayer,   setTargetPlayer]   = useState(null);
+  const [actionError,    setActionError]    = useState(null);
+  const [flipWildCard,   setFlipWildCard]   = useState(null);   // { card, fromColor }
+
 
   if (!state) return <LoadingScreen />;
 
@@ -68,7 +70,19 @@ export default function GameBoard({ state, myId, onMove, error }) {
 
   const handleModalCancel = useCallback(() => {
     setSelectedCard(null); setModalMode(null); setTargetPlayer(null); setActionError(null);
+    setFlipWildCard(null);
   }, []);
+
+  const handleWildFlip = useCallback((fromColor, card) => {
+    if (!isMyTurn || state.phase !== "playing" || state.pendingAction) return;
+    setFlipWildCard({ card, fromColor });
+  }, [isMyTurn, state]);
+
+  const handleFlipConfirm = useCallback(async ({ toColor }) => {
+    const { card, fromColor } = flipWildCard;
+    setFlipWildCard(null);
+    await onMove({ type: "flipWild", cardId: card.id, fromColor, toColor });
+  }, [flipWildCard, onMove]);
 
   const handleRespond    = useCallback(async (responseOrObj) => {
     if (typeof responseOrObj === "object" && responseOrObj !== null && "response" in responseOrObj) {
@@ -86,6 +100,14 @@ export default function GameBoard({ state, myId, onMove, error }) {
 
       {/* ── Overlays ──────────────────────────────────────────────────────── */}
       {state.phase === "ended" && <WinnerOverlay winnerName={state.winner} isMe={state.winnerId === myId} onRestart={() => { window.location.href = "/"; }} />}
+
+      {flipWildCard && (
+        <ActionModal mode="flip-wild"
+          card={flipWildCard.card}
+          fromColor={flipWildCard.fromColor}
+          onConfirm={handleFlipConfirm}
+          onCancel={handleModalCancel} />
+      )}
 
       {mustDiscard && state.pendingAction && (
         <ActionModal mode="discard"
@@ -250,7 +272,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
                   </div>
                 </div>
               </div>
-              <AssetDisplay assets={me?.assets ?? {}} />
+              <AssetDisplay assets={me?.assets ?? {}} onWildFlip={isMyTurn && !state.pendingAction ? handleWildFlip : undefined} />
             </div>
           </div>
         </div>

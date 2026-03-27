@@ -19,6 +19,7 @@ export default function AssetDisplay({
   assets = {},
   small = false,
   onCardClick,        // (color, card) → used for targeting (Sly Deal etc.)
+  onWildFlip,         // (color, card) → flip wild card to new color (my assets only)
 }) {
   const entries = Object.entries(assets).filter(([, cards]) => cards.length > 0);
 
@@ -67,6 +68,7 @@ export default function AssetDisplay({
                   style={style}
                   small={small}
                   onClick={onCardClick ? () => onCardClick(color, card) : undefined}
+                  onWildFlip={onWildFlip && card.type === "wildproperty" ? () => onWildFlip(color, card) : undefined}
                 />
               ))}
 
@@ -91,14 +93,14 @@ export default function AssetDisplay({
 }
 
 // ─── Mini property card ───────────────────────────────────────────────────────
-function PropertyMiniCard({ card, color, style, small, onClick }) {
+function PropertyMiniCard({ card, color, style, small, onClick, onWildFlip }) {
   const w = small ? 32 : 52;
   const h = small ? 44 : 72;
 
   return (
     <div
       onClick={onClick}
-      className="rounded-lg flex flex-col overflow-hidden flex-shrink-0 shadow-md"
+      className="relative rounded-lg flex flex-col overflow-hidden flex-shrink-0 shadow-md"
       style={{
         width: w,
         height: h,
@@ -133,6 +135,18 @@ function PropertyMiniCard({ card, color, style, small, onClick }) {
           ${card.value}M
         </span>
       </div>
+
+      {/* Wild flip button */}
+      {onWildFlip && (
+        <div
+          onClick={(e) => { e.stopPropagation(); onWildFlip(); }}
+          title="Move to another color group"
+          className="absolute top-0.5 right-0.5 rounded flex items-center justify-center hover:bg-white/30 transition-colors"
+          style={{ width: small ? 10 : 14, height: small ? 10 : 14, background: "rgba(0,0,0,0.35)", cursor: "pointer", fontSize: small ? 6 : 8 }}
+        >
+          ↔
+        </div>
+      )}
     </div>
   );
 }
