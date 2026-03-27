@@ -91,6 +91,7 @@ export const userProfiles = pgTable(
     userId: text("user_id").notNull().unique(), // references neon_auth.users(id)
     username: text("username").notNull().unique(),
     avatarId: uuid("avatar_id"),
+    countryCode: text("country_code"), // ISO 3166-1 alpha-2 (e.g. "US", "IN", "BR")
     level: integer("level").default(1).notNull(),
     xp: integer("xp").default(0).notNull(),
     equippedGirlfriendId: uuid("equipped_girlfriend_id"),
@@ -423,6 +424,41 @@ export const playerPairStats = pgTable(
   (t) => [
     uniqueIndex("player_pair_unique").on(t.playerA, t.playerB),
     index("player_pair_collusion_idx").on(t.collusionScore),
+  ]
+);
+
+// ── Bot Pool (Platform Bots) ─────────────────────────────────────────────────
+
+export const botPersonality = pgEnum("bot_personality", [
+  "aggressive",
+  "cautious",
+  "balanced",
+  "strategic",
+  "unpredictable",
+]);
+
+export const botProfiles = pgTable(
+  "bot_profiles",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    botId: text("bot_id").notNull().unique(), // e.g. "BOT_001" — used in game engine
+    displayName: text("display_name").notNull(), // e.g. "Jake_TX"
+    countryCode: text("country_code").notNull(), // "US", "IN", "BR", etc.
+    avatarId: integer("avatar_id").default(15).notNull(),
+    personality: botPersonality("personality").default("balanced").notNull(),
+    eloRating: integer("elo_rating").default(1000).notNull(),
+    tier: tier("tier").default("bronze").notNull(),
+    equippedDateId: uuid("equipped_date_id"), // bot can have an equipped date too
+    gamesPlayed: integer("games_played").default(0).notNull(),
+    gamesWon: integer("games_won").default(0).notNull(),
+    isPlatformBot: boolean("is_platform_bot").default(true).notNull(), // always true, never shown to users
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("bot_profiles_tier_idx").on(t.tier),
+    index("bot_profiles_elo_idx").on(t.eloRating),
+    index("bot_profiles_active_idx").on(t.isActive),
   ]
 );
 
