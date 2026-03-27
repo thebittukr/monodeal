@@ -99,3 +99,14 @@ html, body {
   from { height: 3px; }
   to   { height: 14px; }
 }
+
+/* Playful arrow bounce toward the date character */
+@keyframes bounceArrow {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(3px, 4px) rotate(2deg); }
+  50% { transform: translate(5px, 8px) rotate(4deg); }
+  75% { transform: translate(3px, 4px) rotate(2deg); }
+}
+.animate-bounce-arrow {
+  animation: bounceArrow 2.5s ease-in-out infinite;
+}

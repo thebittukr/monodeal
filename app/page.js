@@ -346,8 +346,74 @@ export default function HomePage() {
               </div>
               <span className="text-slate-600 group-hover:text-white transition">→</span>
             </a>
+
           </div>
         </div>
+
+        {/* ── Floating "Your Date" CTA — pinned near the 3D girl ───── */}
+        <a
+          href="/partners"
+          className="hidden lg:flex fixed bottom-32 right-48 z-20 items-center gap-2 group animate-bounce-arrow"
+        >
+          <div className="bg-black/60 backdrop-blur-md border border-pink-500/30 rounded-2xl pl-5 pr-4 py-3 shadow-2xl shadow-pink-500/10 group-hover:border-pink-400/50 group-hover:shadow-pink-500/20 transition-all max-w-[240px]">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">❤️</span>
+              <div
+                className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-fuchsia-400"
+                style={{ fontFamily: "'Georgia', serif", fontStyle: "italic" }}
+              >
+                Bring a Date
+              </div>
+              <span className="text-2xl" style={{ transform: "rotate(30deg) scaleX(-1)", display: "inline-block" }}>🏹</span>
+            </div>
+            <div className="text-[10px] text-pink-300/80 leading-relaxed mt-1.5 pl-8">
+              Your date cheers you on, roasts opponents & celebrates your wins at the table
+            </div>
+            <div className="text-[9px] text-pink-400/50 font-bold tracking-wider uppercase mt-1 pl-8">
+              4 free starters &middot; tap to choose
+            </div>
+          </div>
+        </a>
+
+        {/* ── Footer Disclaimers ───────────────────────────────────────── */}
+        <footer className="hidden lg:block relative z-10 border-t border-white/5 mt-8 px-8 py-6">
+          <div className="max-w-5xl mx-auto">
+            <div className="grid grid-cols-3 gap-6 mb-4">
+              <div>
+                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">Provably Fair</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Every game uses SHA-256 cryptographic seed commitment. The deck order is mathematically determined before the game starts and cannot be changed. Verify any game at <a href="/fairness" className="text-violet-500 hover:underline">/fairness</a>.
+                </p>
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">Responsible Gaming</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Play responsibly. We enforce loss limits, cooldown periods, and daily caps to protect players. If you feel you are losing control, please take a break. Free rooms are always available.
+                </p>
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">Security</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  All transactions are on Polygon blockchain. Funds are secured in encrypted wallets. We use rate limiting, fraud detection, and anti-cheat systems to keep gameplay fair for everyone.
+                </p>
+              </div>
+            </div>
+            <div className="border-t border-white/5 pt-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+              <p className="text-[10px] text-slate-700">
+                PropertyRush is a skill-based card game. Not a gambling platform. Credits have no real-world cash value until withdrawn. 18+ only.
+              </p>
+              <div className="flex items-center gap-4 text-[10px] text-slate-700">
+                <a href="/fairness" className="hover:text-slate-400 transition">Fair Play</a>
+                <span>&middot;</span>
+                <span>Terms</span>
+                <span>&middot;</span>
+                <span>Privacy</span>
+                <span>&middot;</span>
+                <span>Support</span>
+              </div>
+            </div>
+          </div>
+        </footer>
 
         {/* ── Mobile Bottom Nav ────────────────────────────────────────── */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 backdrop-blur-md border-t border-white/5 px-2 py-1.5 flex justify-around">
