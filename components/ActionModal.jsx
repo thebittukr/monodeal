@@ -36,6 +36,7 @@ export default function ActionModal({
   pendingAction = null,
   onConfirm,    // (params) => void
   onCancel,
+  onBankInstead, // () => void — bank the card at face value instead of using its action
   hasJustSayNo = false,
 }) {
   if (!mode) return null;
@@ -54,7 +55,7 @@ export default function ActionModal({
         <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
 
         {mode === "confirm" && card && (
-          <ConfirmPlay card={card} onConfirm={() => onConfirm({})} onCancel={onCancel} />
+          <ConfirmPlay card={card} onConfirm={() => onConfirm({})} onCancel={onCancel} onBankInstead={onBankInstead} />
         )}
 
         {mode === "pick-color" && card && (
@@ -63,6 +64,7 @@ export default function ActionModal({
             myAssets={myAssets}
             onConfirm={(color) => onConfirm({ color })}
             onCancel={onCancel}
+            onBankInstead={onBankInstead}
           />
         )}
 
@@ -156,11 +158,20 @@ export default function ActionModal({
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function ConfirmPlay({ card, onConfirm, onCancel }) {
+function ConfirmPlay({ card, onConfirm, onCancel, onBankInstead }) {
+  const canBank = onBankInstead && (card?.type === "action" || card?.type === "rent");
   return (
     <div className="flex flex-col items-center gap-4">
       <h3 className="text-white font-bold text-lg">Play this card?</h3>
       <Card card={card} />
+      {canBank && (
+        <button
+          onClick={onBankInstead}
+          className="w-full py-2 rounded-xl bg-amber-700/60 hover:bg-amber-600/70 border border-amber-500/40 text-amber-200 font-semibold text-sm transition-colors"
+        >
+          Bank for ${card.value}M instead
+        </button>
+      )}
       <div className="flex gap-3 w-full">
         <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border border-white/20 text-white/70 font-semibold hover:bg-white/5 transition-colors">
           Cancel
@@ -173,7 +184,7 @@ function ConfirmPlay({ card, onConfirm, onCancel }) {
   );
 }
 
-function PickColor({ card, myAssets, onConfirm, onCancel }) {
+function PickColor({ card, myAssets, onConfirm, onCancel, onBankInstead }) {
   const eligible = card.colors
     ? card.colors.filter((c) => (myAssets[c]?.length ?? 0) > 0)
     : Object.keys(COLORS).filter((c) => (myAssets[c]?.length ?? 0) > 0);
@@ -212,6 +223,14 @@ function PickColor({ card, myAssets, onConfirm, onCancel }) {
         </div>
       )}
 
+      {onBankInstead && (
+        <button
+          onClick={onBankInstead}
+          className="w-full py-2 rounded-xl bg-amber-700/60 hover:bg-amber-600/70 border border-amber-500/40 text-amber-200 font-semibold text-sm transition-colors"
+        >
+          Bank for ${card.value}M instead
+        </button>
+      )}
       <button onClick={onCancel} className="w-full py-2.5 rounded-xl border border-white/20 text-white/70 font-semibold hover:bg-white/5 transition-colors">
         Cancel
       </button>

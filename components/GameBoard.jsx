@@ -64,7 +64,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
 
   const handleModalConfirm = useCallback(async (params) => {
     if (!selectedCard) return;
-    const move = { cardId: selectedCard.id, type: "play", ...(targetPlayer ? { targetPlayerIdx: targetPlayer.playerIdx } : {}), ...params };
+    const move = { cardId: selectedCard.id, type: "play", ...(targetPlayer && !params?.asBank ? { targetPlayerIdx: targetPlayer.playerIdx } : {}), ...params };
     setSelectedCard(null); setModalMode(null); setTargetPlayer(null);
     await onMove(move);
   }, [selectedCard, targetPlayer, onMove]);
@@ -157,13 +157,16 @@ export default function GameBoard({ state, myId, onMove, error }) {
       {modalMode && selectedCard && !mustRespond && (
         <>
           {modalMode === "pick-player" && (
-            <PickPlayerModal opponentIndices={opponentIndices} card={selectedCard} onPick={handlePlayerSelected} onCancel={handleModalCancel} />
+            <PickPlayerModal opponentIndices={opponentIndices} card={selectedCard} onPick={handlePlayerSelected} onCancel={handleModalCancel}
+              onBankInstead={() => handleModalConfirm({ asBank: true })} />
           )}
           {(modalMode === "confirm" || modalMode === "confirm-targeted") && (
-            <ActionModal mode="confirm" card={selectedCard} targetPlayerName={targetPlayer?.player?.name} onConfirm={handleModalConfirm} onCancel={handleModalCancel} />
+            <ActionModal mode="confirm" card={selectedCard} targetPlayerName={targetPlayer?.player?.name} onConfirm={handleModalConfirm} onCancel={handleModalCancel}
+              onBankInstead={selectedCard?.type === "action" || selectedCard?.type === "rent" ? () => handleModalConfirm({ asBank: true }) : undefined} />
           )}
           {modalMode === "pick-color" && (
-            <ActionModal mode="pick-color" card={selectedCard} myAssets={me?.assets ?? {}} onConfirm={handleModalConfirm} onCancel={handleModalCancel} />
+            <ActionModal mode="pick-color" card={selectedCard} myAssets={me?.assets ?? {}} onConfirm={handleModalConfirm} onCancel={handleModalCancel}
+              onBankInstead={() => handleModalConfirm({ asBank: true })} />
           )}
           {modalMode === "pick-wild-color" && (
             <ActionModal mode="pick-wild-color" card={selectedCard} onConfirm={handleModalConfirm} onCancel={handleModalCancel} />
@@ -361,7 +364,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
 }
 
 // ─── Pick Player Modal ────────────────────────────────────────────────────────
-function PickPlayerModal({ opponentIndices, card, onPick, onCancel }) {
+function PickPlayerModal({ opponentIndices, card, onPick, onCancel, onBankInstead }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onCancel} />
@@ -386,6 +389,11 @@ function PickPlayerModal({ opponentIndices, card, onPick, onCancel }) {
             </button>
           ))}
         </div>
+        {onBankInstead && (
+          <button onClick={onBankInstead} className="w-full py-2 rounded-xl bg-amber-700/60 hover:bg-amber-600/70 border border-amber-500/40 text-amber-200 font-semibold text-sm transition-colors mb-2">
+            Bank for ${card?.value}M instead
+          </button>
+        )}
         <button onClick={onCancel} className="w-full py-2.5 rounded-xl border border-white/20 text-white/70 font-semibold hover:bg-white/5 transition-colors">
           Cancel
         </button>
