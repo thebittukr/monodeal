@@ -368,20 +368,15 @@ export default function CasinoBackground({
   }
   const shuffled = shuffleRef.current;
 
-  // Build one slot per player (all different), or 2 decorative on home page
-  const displaySlots = players.length > 0
-    ? players.slice(0, shuffled.length).map((p, i) => ({
-        url:          shuffled[i].url,      // unique girl per player slot
-        playerName:   p.name,
-        charIndex:    i,
-        bubbleDelayMs: 8000 + i * 4000,
-      }))
-    : [
-        { url: shuffled[0].url, playerName: '', charIndex: 0, bubbleDelayMs: 9000  },
-        { url: shuffled[1].url, playerName: '', charIndex: 1, bubbleDelayMs: 15000 },
-      ];
+  // Always show exactly ONE girl — randomly picked per session.
+  // On home page use the first shuffled model; in-game use the slot
+  // matching the first (human) player's index for consistency.
+  const singleSlot = players.length > 0
+    ? { url: shuffled[0].url, playerName: players[0]?.name ?? '', charIndex: 0, bubbleDelayMs: 8000 }
+    : { url: shuffled[0].url, playerName: '', charIndex: 0, bubbleDelayMs: 9000 };
 
-  const displayPositions = getPositions(displaySlots.length);
+  const displaySlots     = [singleSlot];
+  const displayPositions = [92]; // right edge — always fully visible, never hides game UI
 
   // Card-play reaction: pick a random display slot
   useEffect(() => {
