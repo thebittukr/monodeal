@@ -523,6 +523,7 @@ function RespondToAction({ pendingAction, attackerName, hasJustSayNo, onAccept, 
   };
 
   const label = actionLabels[pendingAction.type] ?? "Opponent played an action against you!";
+  const isPayment = ["debtcollector", "rent", "birthday", "propertytax"].includes(pendingAction.type);
 
   return (
     <div className="flex flex-col gap-4">
@@ -530,6 +531,11 @@ function RespondToAction({ pendingAction, attackerName, hasJustSayNo, onAccept, 
         <div className="text-3xl mb-2">⚠️</div>
         <h3 className="text-white font-bold text-lg">Incoming Action!</h3>
         <p className="text-slate-300 text-sm mt-2">{label}</p>
+        {isPayment && (
+          <p className="text-slate-500 text-xs mt-1">
+            Your cash will be taken first — if short, you'll choose properties to cover the rest.
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">

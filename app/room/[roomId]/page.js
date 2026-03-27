@@ -140,8 +140,8 @@ export default function RoomPage() {
     const joined  = state?.players?.length ?? 1;
     const needed  = cap - joined;
     const players = state?.players ?? [];
-    const isHost  = state?.hostId === myId;
-    const canStart = isHost && joined >= 2;
+    const isHost   = state?.hostId === myId;
+    const canStart = isHost && joined >= 2 && joined < cap; // only for early start; full room auto-starts
 
     const handleStart = async () => {
       try {
@@ -201,16 +201,16 @@ export default function RoomPage() {
           {canStart && (
             <button
               onClick={handleStart}
-              className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors mb-3"
+              className="w-full py-3 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-sm transition-colors mb-3"
             >
-              Start Game ({joined} players) ▶
+              Start Early ({joined}/{cap} players) ▶
             </button>
           )}
 
           <div className="flex items-center gap-2 justify-center">
             <div className={`w-2 h-2 rounded-full ${reconnecting ? "bg-yellow-400" : "bg-emerald-400"} animate-pulse`} />
             <span className="text-slate-400 text-xs">
-              {reconnecting ? "Reconnecting…" : canStart ? "or wait for more players to join" : `Auto-starts when ${cap} players join`}
+              {reconnecting ? "Reconnecting…" : `Auto-starts when all ${cap} players join`}
             </span>
           </div>
         </div>
