@@ -1,7 +1,8 @@
 "use client";
 import { useRef, useMemo, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Stars, Html } from "@react-three/drei";
+import { Stars, Html, Environment } from "@react-three/drei";
+import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import * as THREE from "three";
 import { getAvatar } from "@/lib/avatars";
 
@@ -255,112 +256,268 @@ function Crowd({ neons, cheering = false }) {
 // ── Seated Player at Table ────────────────────────────────────────────────────
 function SeatedPlayer({ position, rotation, bodyColor, accentColor, emoji, name, phase }) {
   const rootRef = useRef();
+  const headRef = useRef();
   const lArmRef = useRef();
   const rArmRef = useRef();
+  const lHandRef = useRef();
+  const rHandRef = useRef();
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime + phase;
     if (!rootRef.current) return;
-    // Subtle breathing animation
-    rootRef.current.position.y = position[1] + Math.sin(t * 0.8) * 0.008;
-    // Occasional look-around
-    if (rootRef.current.children[0]) {
-      rootRef.current.children[0].rotation.y = Math.sin(t * 0.3) * 0.2;
+
+    // Subtle breathing
+    rootRef.current.position.y = position[1] + Math.sin(t * 0.85) * 0.01;
+    rootRef.current.scale.y = 1 + Math.sin(t * 0.85) * 0.005;
+
+    // Head looks around
+    if (headRef.current) {
+      headRef.current.rotation.y = Math.sin(t * 0.4) * 0.18;
+      headRef.current.rotation.x = -0.05 + Math.sin(t * 0.3) * 0.05;
     }
-    // Arms resting on table
-    if (lArmRef.current) lArmRef.current.rotation.x = -0.6 + Math.sin(t * 0.8) * 0.04;
-    if (rArmRef.current) rArmRef.current.rotation.x = -0.6 + Math.sin(t * 0.8) * 0.04;
+
+    // Arms rest on table with slight movement
+    if (lArmRef.current) {
+      lArmRef.current.rotation.x = -0.55 + Math.sin(t * 0.85) * 0.03;
+      lArmRef.current.rotation.z = -0.12 + Math.sin(t * 0.5) * 0.02;
+    }
+    if (rArmRef.current) {
+      rArmRef.current.rotation.x = -0.55 + Math.sin(t * 0.85) * 0.03;
+      rArmRef.current.rotation.z = 0.12 - Math.sin(t * 0.5) * 0.02;
+    }
   });
 
-  const skin = "#f5c9a8";
+  const skin = "#e8b99a";
+  const lipColor = "#c07070";
+  const hairColor = "#1a0800";
 
   return (
     <group ref={rootRef} position={position} rotation={rotation}>
-      {/* Chair back */}
-      <mesh position={[0, 0.2, -0.28]}>
-        <boxGeometry args={[0.52, 0.55, 0.06]} />
-        <meshStandardMaterial color="#1a0800" roughness={0.8} metalness={0.2} />
+
+      {/* ── Luxury Chair ─────────────────────────────────────────────── */}
+      {/* Chair back — curved */}
+      <mesh position={[0, 0.25, -0.35]}>
+        <boxGeometry args={[0.58, 0.62, 0.07]} />
+        <meshPhysicalMaterial color="#1a0a00" roughness={0.65} metalness={0.3} reflectivity={0.8} />
       </mesh>
-      <mesh position={[0, -0.1, -0.28]}>
-        <boxGeometry args={[0.52, 0.06, 0.06]} />
-        <meshStandardMaterial color="#1a0800" roughness={0.8} />
+      {/* Chair back top rail */}
+      <mesh position={[0, 0.57, -0.32]}>
+        <boxGeometry args={[0.58, 0.06, 0.06]} />
+        <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.15} emissive={accentColor} emissiveIntensity={0.4} />
       </mesh>
-      {/* Chair seat */}
-      <mesh position={[0, -0.28, -0.1]}>
-        <boxGeometry args={[0.5, 0.07, 0.42]} />
-        <meshStandardMaterial color="#1a0800" roughness={0.8} metalness={0.2} />
+      {/* Chair cushion */}
+      <mesh position={[0, -0.27, -0.1]}>
+        <boxGeometry args={[0.52, 0.09, 0.44]} />
+        <meshPhysicalMaterial color="#2a1000" roughness={0.8} metalness={0.1} />
       </mesh>
-      {/* Chair legs */}
-      {[[-0.22,-0.3],[0.22,-0.3],[-0.22,0.12],[0.22,0.12]].map(([x,z],i)=>(
-        <mesh key={i} position={[x, -0.5, z]}>
-          <cylinderGeometry args={[0.02,0.02,0.44,6]} />
-          <meshStandardMaterial color="#c9a227" metalness={0.8} roughness={0.3} />
-        </mesh>
+      {/* Chair seat rim */}
+      <mesh position={[0, -0.22, -0.1]}>
+        <boxGeometry args={[0.54, 0.02, 0.46]} />
+        <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.2} emissive={accentColor} emissiveIntensity={0.3} />
+      </mesh>
+      {/* Armrests */}
+      {[-0.28, 0.28].map((x, i) => (
+        <group key={i}>
+          <mesh position={[x, -0.1, -0.1]}>
+            <boxGeometry args={[0.05, 0.28, 0.38]} />
+            <meshStandardMaterial color="#1a0a00" roughness={0.7} />
+          </mesh>
+          <mesh position={[x, 0.04, -0.1]}>
+            <boxGeometry args={[0.055, 0.04, 0.38]} />
+            <meshStandardMaterial color={accentColor} metalness={0.85} roughness={0.2} />
+          </mesh>
+        </group>
+      ))}
+      {/* Chair legs with golden tips */}
+      {[[-0.24,-0.31,0.12],[0.24,-0.31,0.12],[-0.24,-0.31,-0.32],[0.24,-0.31,-0.32]].map(([x,y,z],i)=>(
+        <group key={i}>
+          <mesh position={[x, y, z]}>
+            <cylinderGeometry args={[0.018, 0.022, 0.48, 8]} />
+            <meshStandardMaterial color="#1a0a00" roughness={0.7} />
+          </mesh>
+          <mesh position={[x, y - 0.24, z]}>
+            <sphereGeometry args={[0.028, 8, 8]} />
+            <meshStandardMaterial color={accentColor} metalness={0.95} roughness={0.1} emissive={accentColor} emissiveIntensity={0.3} />
+          </mesh>
+        </group>
       ))}
 
-      {/* Torso */}
-      <mesh position={[0, 0.02, 0]}>
-        <cylinderGeometry args={[0.14, 0.16, 0.38, 10]} />
-        <meshStandardMaterial color={bodyColor} roughness={0.65} emissive={bodyColor} emissiveIntensity={0.12} />
+      {/* ── Body ─────────────────────────────────────────────────────── */}
+      {/* Hips/lower torso */}
+      <mesh position={[0, -0.18, 0]}>
+        <cylinderGeometry args={[0.16, 0.17, 0.2, 12]} />
+        <meshStandardMaterial color={bodyColor} roughness={0.7} emissive={bodyColor} emissiveIntensity={0.08} />
+      </mesh>
+      {/* Upper torso */}
+      <mesh position={[0, 0.05, 0]}>
+        <cylinderGeometry args={[0.14, 0.165, 0.3, 12]} />
+        <meshStandardMaterial color={bodyColor} roughness={0.65} emissive={bodyColor} emissiveIntensity={0.1} />
+      </mesh>
+      {/* Suit lapels/collar detail */}
+      <mesh position={[0, 0.14, 0.1]}>
+        <boxGeometry args={[0.22, 0.16, 0.04]} />
+        <meshStandardMaterial color={accentColor} metalness={0.6} roughness={0.3} emissive={accentColor} emissiveIntensity={0.25} transparent opacity={0.7} />
+      </mesh>
+      {/* Collar */}
+      <mesh position={[0, 0.22, 0.06]}>
+        <boxGeometry args={[0.12, 0.08, 0.06]} />
+        <meshStandardMaterial color="#faf8f0" roughness={0.9} />
       </mesh>
 
-      {/* Neck */}
-      <mesh position={[0, 0.24, 0]}>
-        <cylinderGeometry args={[0.038, 0.044, 0.1, 8]} />
-        <meshStandardMaterial color={skin} roughness={0.7} />
+      {/* ── Neck ─────────────────────────────────────────────────────── */}
+      <mesh position={[0, 0.26, 0]}>
+        <cylinderGeometry args={[0.042, 0.048, 0.1, 10]} />
+        <meshStandardMaterial color={skin} roughness={0.65} />
       </mesh>
 
-      {/* Head */}
-      <group>
-        <mesh position={[0, 0.38, 0]}>
-          <sphereGeometry args={[0.13, 16, 16]} />
+      {/* ── Head ─────────────────────────────────────────────────────── */}
+      <group ref={headRef} position={[0, 0.26, 0]}>
+        {/* Skull */}
+        <mesh position={[0, 0.17, 0]}>
+          <sphereGeometry args={[0.14, 20, 20]} />
+          <meshStandardMaterial color={skin} roughness={0.55} />
+        </mesh>
+        {/* Jaw (slightly wider at bottom) */}
+        <mesh position={[0, 0.08, 0.01]}>
+          <sphereGeometry args={[0.115, 16, 16]} />
           <meshStandardMaterial color={skin} roughness={0.6} />
         </mesh>
+
         {/* Hair */}
-        <mesh position={[0, 0.44, -0.01]}>
-          <sphereGeometry args={[0.14, 14, 14]} />
-          <meshStandardMaterial color="#1a0600" roughness={0.92} />
+        <mesh position={[0, 0.23, 0]}>
+          <sphereGeometry args={[0.148, 18, 18]} />
+          <meshStandardMaterial color={hairColor} roughness={0.95} />
+        </mesh>
+        {/* Hair side */}
+        <mesh position={[0, 0.14, -0.04]}>
+          <sphereGeometry args={[0.148, 16, 16]} />
+          <meshStandardMaterial color={hairColor} roughness={0.95} />
         </mesh>
 
-        {/* Avatar emoji name tag above head */}
-        <Html position={[0, 0.38, 0]} center distanceFactor={4} zIndexRange={[1, 0]} occlude={false}>
+        {/* Eyes */}
+        {[-0.048, 0.048].map((x, i) => (
+          <group key={i} position={[x, 0.18, 0.125]}>
+            {/* Eye white */}
+            <mesh>
+              <sphereGeometry args={[0.022, 10, 10]} />
+              <meshStandardMaterial color="#f0ece8" roughness={0.5} />
+            </mesh>
+            {/* Iris */}
+            <mesh position={[0, 0, 0.012]}>
+              <sphereGeometry args={[0.016, 10, 10]} />
+              <meshStandardMaterial color={accentColor} emissive={accentColor} emissiveIntensity={0.3} roughness={0.3} />
+            </mesh>
+            {/* Pupil */}
+            <mesh position={[0, 0, 0.02]}>
+              <sphereGeometry args={[0.009, 8, 8]} />
+              <meshStandardMaterial color="#050505" />
+            </mesh>
+            {/* Eyebrow */}
+            <mesh position={[0, 0.03, 0.005]} rotation={[0, 0, i === 0 ? 0.2 : -0.2]}>
+              <boxGeometry args={[0.036, 0.007, 0.01]} />
+              <meshStandardMaterial color={hairColor} roughness={0.9} />
+            </mesh>
+          </group>
+        ))}
+
+        {/* Nose */}
+        <mesh position={[0, 0.14, 0.132]}>
+          <sphereGeometry args={[0.016, 8, 8]} />
+          <meshStandardMaterial color={skin} roughness={0.7} />
+        </mesh>
+
+        {/* Lips */}
+        <mesh position={[0, 0.106, 0.128]} rotation={[0.15, 0, 0]}>
+          <torusGeometry args={[0.022, 0.008, 6, 16, Math.PI]} />
+          <meshStandardMaterial color={lipColor} roughness={0.5} />
+        </mesh>
+
+        {/* Ear left */}
+        <mesh position={[-0.142, 0.14, 0]}>
+          <sphereGeometry args={[0.03, 10, 10]} />
+          <meshStandardMaterial color={skin} roughness={0.65} />
+        </mesh>
+        {/* Ear right */}
+        <mesh position={[0.142, 0.14, 0]}>
+          <sphereGeometry args={[0.03, 10, 10]} />
+          <meshStandardMaterial color={skin} roughness={0.65} />
+        </mesh>
+
+        {/* Avatar floating tag above head */}
+        <Html position={[0, 0.32, 0]} center distanceFactor={4} zIndexRange={[1, 0]} occlude={false}>
           <div style={{
-            background: `linear-gradient(135deg, ${bodyColor}dd, #000000cc)`,
-            border: `1px solid ${accentColor}88`,
-            borderRadius: 8,
-            padding: "3px 7px",
+            background: `linear-gradient(135deg, ${bodyColor}ee, #000000bb)`,
+            border: `1px solid ${accentColor}99`,
+            borderRadius: 10,
+            padding: "4px 10px",
             display: "flex",
             alignItems: "center",
-            gap: 4,
+            gap: 5,
             whiteSpace: "nowrap",
-            boxShadow: `0 0 10px ${accentColor}44`,
-            transform: "translateY(-36px)",
+            boxShadow: `0 0 14px ${accentColor}55, inset 0 1px 0 ${accentColor}22`,
+            transform: "translateY(-38px)",
             pointerEvents: "none",
+            backdropFilter: "blur(4px)",
           }}>
-            <span style={{ fontSize: 14 }}>{emoji}</span>
-            <span style={{ color: "#fff", fontSize: 10, fontWeight: 700, fontFamily: "sans-serif" }}>{name}</span>
+            <span style={{ fontSize: 16, lineHeight: 1 }}>{emoji}</span>
+            <span style={{ color: "#ffffff", fontSize: 11, fontWeight: 700, fontFamily: "system-ui, sans-serif", textShadow: `0 0 8px ${accentColor}` }}>{name}</span>
           </div>
         </Html>
       </group>
 
-      {/* Left arm — resting on table */}
-      <group ref={lArmRef} position={[-0.18, 0.1, 0.12]} rotation={[-0.6, 0, -0.2]}>
+      {/* ── Arms ─────────────────────────────────────────────────────── */}
+      {/* Left upper arm */}
+      <group ref={lArmRef} position={[-0.185, 0.12, 0.05]} rotation={[-0.55, 0, -0.1]}>
         <mesh>
-          <cylinderGeometry args={[0.028, 0.022, 0.3, 8]} />
-          <meshStandardMaterial color={skin} roughness={0.7} />
+          <cylinderGeometry args={[0.038, 0.032, 0.28, 10]} />
+          <meshStandardMaterial color={bodyColor} roughness={0.65} emissive={bodyColor} emissiveIntensity={0.08} />
         </mesh>
+        {/* Forearm */}
+        <group ref={lHandRef} position={[0, -0.16, 0]}>
+          <mesh>
+            <cylinderGeometry args={[0.028, 0.024, 0.24, 10]} />
+            <meshStandardMaterial color={skin} roughness={0.6} />
+          </mesh>
+          {/* Hand */}
+          <mesh position={[0, -0.14, 0]}>
+            <sphereGeometry args={[0.038, 12, 12]} />
+            <meshStandardMaterial color={skin} roughness={0.55} />
+          </mesh>
+          {/* Cuff */}
+          <mesh position={[0, -0.02, 0]}>
+            <cylinderGeometry args={[0.032, 0.032, 0.04, 10]} />
+            <meshStandardMaterial color="#faf8f0" roughness={0.9} />
+          </mesh>
+        </group>
       </group>
 
-      {/* Right arm — resting on table */}
-      <group ref={rArmRef} position={[0.18, 0.1, 0.12]} rotation={[-0.6, 0, 0.2]}>
+      {/* Right upper arm */}
+      <group ref={rArmRef} position={[0.185, 0.12, 0.05]} rotation={[-0.55, 0, 0.1]}>
         <mesh>
-          <cylinderGeometry args={[0.028, 0.022, 0.3, 8]} />
-          <meshStandardMaterial color={skin} roughness={0.7} />
+          <cylinderGeometry args={[0.038, 0.032, 0.28, 10]} />
+          <meshStandardMaterial color={bodyColor} roughness={0.65} emissive={bodyColor} emissiveIntensity={0.08} />
         </mesh>
+        {/* Forearm */}
+        <group ref={rHandRef} position={[0, -0.16, 0]}>
+          <mesh>
+            <cylinderGeometry args={[0.028, 0.024, 0.24, 10]} />
+            <meshStandardMaterial color={skin} roughness={0.6} />
+          </mesh>
+          {/* Hand */}
+          <mesh position={[0, -0.14, 0]}>
+            <sphereGeometry args={[0.038, 12, 12]} />
+            <meshStandardMaterial color={skin} roughness={0.55} />
+          </mesh>
+          {/* Cuff / watch */}
+          <mesh position={[0, -0.02, 0]}>
+            <cylinderGeometry args={[0.032, 0.032, 0.04, 10]} />
+            <meshStandardMaterial color="#faf8f0" roughness={0.9} />
+          </mesh>
+        </group>
       </group>
 
-      {/* Accent glow */}
-      <pointLight position={[0, 0.35, 0.15]} color={accentColor} intensity={0.4} distance={1.5} decay={2} />
+      {/* ── Accent glow ──────────────────────────────────────────────── */}
+      <pointLight position={[0, 0.22, 0.2]} color={accentColor} intensity={0.6} distance={2.0} decay={2} />
     </group>
   );
 }
@@ -644,7 +801,17 @@ export default function CasinoBackground({ city = "lasvegas", cheering = false, 
         <Suspense fallback={null}>
           <Scene config={config} cheering={cheering} players={players} />
           <CinematicCamera />
+          <Environment preset="night" />
         </Suspense>
+        <EffectComposer>
+          <Bloom
+            intensity={1.2}
+            luminanceThreshold={0.4}
+            luminanceSmoothing={0.9}
+            mipmapBlur
+          />
+          <Vignette eskil={false} offset={0.4} darkness={0.6} />
+        </EffectComposer>
       </Canvas>
     </div>
   );

@@ -52,13 +52,13 @@ export default function RoomPage() {
       if (typeof window !== "undefined") getMusicPlayer().stop();
       return;
     }
-    // Enable SFX via Web Audio
+    // Enable SFX via Web Audio (separate from background music)
     import("@/lib/sounds").then((m) => {
       soundsRef.current = m;
-      m.setMusicEnabled(true);  // enables SFX
-      m.stopMusic();             // silence procedural chiptune
+      // Enable only SFX, not the procedural background music
+      m.setSfxEnabled(true);
     });
-    // Start Pixabay music
+    // Start Pixabay streaming music
     const p = getMusicPlayer();
     p.play();
     p.loadCity(city ?? "lasvegas");
