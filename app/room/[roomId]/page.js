@@ -18,15 +18,17 @@ export default function RoomPage() {
   const { roomId } = useParams();
   const router     = useRouter();
 
-  const [myId,         setMyId]         = useState(null);
-  const [state,        setState]        = useState(null);
-  const [moveError,    setMoveError]    = useState("");
-  const [copied,       setCopied]       = useState(false);
-  const [soundOn,      setSoundOn]      = useState(false);
-  const [reconnecting, setReconnecting] = useState(false);
-  const [prevPhase,    setPrevPhase]    = useState(null);
-  const [prevTurnIdx,  setPrevTurnIdx]  = useState(null);
-  const [city,         setCity]         = useState("lasvegas");
+  const [myId,            setMyId]            = useState(null);
+  const [state,           setState]           = useState(null);
+  const [moveError,       setMoveError]       = useState("");
+  const [copied,          setCopied]          = useState(false);
+  const [soundOn,         setSoundOn]         = useState(false);
+  const [reconnecting,    setReconnecting]    = useState(false);
+  const [prevPhase,       setPrevPhase]       = useState(null);
+  const [prevTurnIdx,     setPrevTurnIdx]     = useState(null);
+  const [city,            setCity]            = useState("lasvegas");
+  const [cardPlayCount,   setCardPlayCount]   = useState(0);  // bumped on every card play
+  const [lossTarget,      setLossTarget]      = useState(-1); // player index hit by negative action
 
   const myIdRef          = useRef(null);
   const soundsRef        = useRef(null);
@@ -124,10 +126,31 @@ export default function RoomPage() {
     setPrevTurnIdx(state.turnIndex);
   }, [state, prevPhase, prevTurnIdx]);
 
+  // ── Detect negative actions from game log for character loss-reaction ──────
+  const prevLogRef = useRef(null);
+  useEffect(() => {
+    if (!state?.log?.length) return;
+    const topEntry = state.log[0];
+    if (topEntry === prevLogRef.current) return;
+    prevLogRef.current = topEntry;
+    // Keywords that mean someone got hit
+    const negKeywords = /pays|steals|take|rent|collect|tax|swap|wreck|dismantle/i;
+    if (negKeywords.test(topEntry)) {
+      // Find which player index is involved — pick a random one for now
+      const numPlayers = state.players?.length ?? 2;
+      setLossTarget(Math.floor(Math.random() * numPlayers));
+    }
+  }, [state]);
+
   // ── Move (with retry) ─────────────────────────────────────────────────────
   const handleMove = useCallback(async (move) => {
     setMoveError("");
     soundsRef.current?.sfxCardPlay?.();
+
+    // Bump card-play reaction for any card played by the human player
+    if (move.type === "play") {
+      setCardPlayCount((c) => c + 1);
+    }
 
     const body = JSON.stringify({ action: "playMove", roomId, playerId: myIdRef.current, move });
 
@@ -189,7 +212,7 @@ export default function RoomPage() {
 
     return (
       <div className="min-h-full flex flex-col items-center justify-center px-4 relative">
-        <CasinoBackground city={city} cheering={state?.phase === "ended"} players={state?.players ?? []} />
+        <CasinoBackground city={city} cheering={state?.phase === "ended"} players={state?.players ?? []} gameActive={false} />
         <div className="relative z-10 w-full flex flex-col items-center justify-center">
         <div className="w-full max-w-sm bg-slate-900/85 backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl p-8">
           <div className="text-center mb-6">
@@ -286,7 +309,14 @@ export default function RoomPage() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="h-full flex flex-col overflow-hidden relative">
-      <CasinoBackground city={city} cheering={state?.phase === "ended"} players={state?.players ?? []} />
+      <CasinoBackground
+        city={city}
+        cheering={state?.phase === "ended"}
+        players={state?.players ?? []}
+        gameActive={state?.phase === "playing"}
+        reactionTrigger={cardPlayCount}
+        lossTarget={lossTarget}
+      />
       <div className="relative z-10 h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-black/92 border-b border-white/10 flex-shrink-0">

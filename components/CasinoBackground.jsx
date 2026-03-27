@@ -704,21 +704,43 @@ const CHAR_POOL = [
   { url: '/models/crimson.glb'  },
 ];
 
-// Support lines — balanced mix of hype, sympathy, sass and spice
-const SUPPORT_LINES = [
-  // Hype
+// ── Speech line banks ─────────────────────────────────────────────────────────
+const HYPE_LINES = [
   "You're a real deal! 💪",
   "That's my champion! ✨",
   "Unstoppable tonight! 🌟",
   "High roller energy! 🎲",
   "Eyes on the prize! 👀",
   "Make that power move! ⚡",
-  // Sympathy
+  "Vegas would love you 🎰",
+  "Born to win, darling! 👑",
+  "You've got this in the bag! 💼",
+  "The table is YOURS tonight! 🏆",
+  "Pure genius. I'm obsessed. 😍",
+  "They never saw it coming! 💥",
+  "Look at you go! Incredible! 🤩",
+  "This is YOUR moment! 🌠",
+  "Flawless strategy, honey! ♟️",
+  "The cards are whispering your name 🃏",
+  "This table has never seen anything like you 🌟",
+];
+
+const LOSS_LINES = [
   "Sorry for your loss, honey 😢",
   "Don't you dare give up! 😤",
   "They got lucky. You've got skill 🃏",
   "Shake it off, darling 💅",
-  // Spicy / sassy
+  "I didn't come here to watch you lose 👀",
+  "Ooh that stings… but you're still standing! 💔",
+  "Revenge is a dish best served cold 🧊",
+  "Pain is temporary, victory is forever 🔥",
+  "Even champions take a hit sometimes 🥊",
+  "That was rough. Come back stronger! 💪",
+  "They played dirty. You'll play smarter. 🧠",
+  "Don't let them see you sweat, darling 😤",
+];
+
+const SASSY_LINES = [
   "Oh honey, is that the best you've got? 😏",
   "Cute move. Now watch mine 💋",
   "Bless your heart… you tried 🙈",
@@ -726,13 +748,29 @@ const SUPPORT_LINES = [
   "They're shaking in their boots right now 😈",
   "Oh darling, the drama! 🎭",
   "Play your cards right — no pun intended 😉",
-  "I didn't come here to watch you lose 👀",
   "That was bold. I respect it 💎",
   "Someone's getting greedy… I like it 😼",
-  // Fun
-  "The cards are whispering your name 🃏",
-  "This table has never seen anything like you 🌟",
-  "Vegas would love you 🎰",
+  "Oh the nerve! Absolutely unhinged. 😂",
+  "I would never… but I understand why you did 👀",
+  "Scandalous. Absolutely scandalous! 🌶️",
+  "Did they really just do that? Bold! 😤",
+  "Honey, you're playing 4D chess 🧩",
+  "Look at the brain on this one! 🧠",
+  "Messy but iconic, honestly 💅",
+];
+
+// Short burst lines on card play
+const CARD_REACT_LINES = [
+  "Ooh, bold move! 🎴",
+  "Yes! Play it! ✨",
+  "That's the one! 🔥",
+  "Make them pay! 💸",
+  "I love this! 😍",
+  "Go go go! 🚀",
+  "Yesss! 💪",
+  "The drama! 😱",
+  "Iconic! 🌟",
+  "They won't recover from that! 😈",
 ];
 
 // Shared Draco decoder (one instance reused across all character loaders)
@@ -745,14 +783,19 @@ function getDracoLoader() {
   return _dracoLoader;
 }
 
-// Evenly-spaced left% positions for N characters
+// Positions that stay near edges so girls peek out beside the game board
 function getPositions(n) {
-  if (n === 1) return [50];
-  return Array.from({ length: n }, (_, i) => 10 + (80 / (n - 1)) * i);
+  if (n <= 0) return [];
+  if (n === 1) return [8];
+  if (n === 2) return [8, 92];
+  if (n === 3) return [6, 50, 94];
+  if (n === 4) return [6, 22, 78, 94];
+  if (n === 5) return [5, 17, 50, 83, 95];
+  return Array.from({ length: n }, (_, i) => 5 + (90 / (n - 1)) * i);
 }
 
 // ── CharacterSlot — own Three.js canvas per character ─────────────────────────
-function CharacterSlot({ url, charIndex, playerName, bubbleDelayMs }) {
+function CharacterSlot({ url, charIndex, playerName, bubbleDelayMs, gameActive, forceReactLine, slim }) {
   const canvasRef            = useRef(null);
   const [visible,    setVisible]    = useState(false);
   const [bubble,     setBubble]     = useState('');
@@ -770,18 +813,17 @@ function CharacterSlot({ url, charIndex, playerName, bubbleDelayMs }) {
     renderer.toneMappingExposure = 1.2;
 
     const scene  = new THREE.Scene();
-    const W = canvas.clientWidth || 150;
-    const H = canvas.clientHeight || 420;
+    const W = canvas.clientWidth || 140;
+    const H = canvas.clientHeight || 400;
     const camera = new THREE.PerspectiveCamera(42, W / H, 0.01, 100);
 
-    // Neutral env map from a plain white data texture — drives PBR specular
-    // without needing RoomEnvironment (which has webpack bundling issues)
+    // Neutral env map — drives PBR specular without RoomEnvironment
     const pmrem = new THREE.PMREMGenerator(renderer);
     const neutralEnv = pmrem.fromScene(new THREE.Scene()).texture;
     scene.environment = neutralEnv;
     pmrem.dispose();
 
-    // Lights — strong ambient + two directionals ensure diffuse colour shows
+    // Strong lights so diffuse colour shows correctly
     scene.add(new THREE.AmbientLight(0xffffff, 3.0));
     const key = new THREE.DirectionalLight(0xfff4e0, 3.0);
     key.position.set(1.5, 3, 2);
@@ -797,10 +839,12 @@ function CharacterSlot({ url, charIndex, playerName, bubbleDelayMs }) {
     const loader = new GLTFLoader();
     loader.setDRACOLoader(getDracoLoader());
 
-    let mixer = null;
-    let model = null;
-    let rafId = null;
-    let rotationY = (charIndex * 0.9) % (Math.PI * 2); // staggered start angle
+    let mixer  = null;
+    let model  = null;
+    let rafId  = null;
+    // Truly random start angle + per-character speed variation so they never sync
+    let rotationY = Math.random() * Math.PI * 2;
+    const spinRate  = 0.16 + (charIndex % 4) * 0.025 + (Math.random() * 0.04);
 
     loader.load(url, (gltf) => {
       model = gltf.scene;
@@ -813,17 +857,15 @@ function CharacterSlot({ url, charIndex, playerName, bubbleDelayMs }) {
       model.scale.setScalar(scale);
       model.position.set(
         -center.x * scale,
-        -center.y * scale + (size.y * scale * 0.05), // slight lift
+        -center.y * scale + (size.y * scale * 0.05),
         -center.z * scale,
       );
       scene.add(model);
 
-      // Position camera to frame the full character
       const scaledH = size.y * scale;
       camera.position.set(0, scaledH * 0.42, scaledH * 1.1);
       camera.lookAt(0, scaledH * 0.42, 0);
 
-      // Play idle animation if present
       if (gltf.animations.length > 0) {
         mixer = new THREE.AnimationMixer(model);
         mixer.clipAction(gltf.animations[0]).play();
@@ -838,7 +880,7 @@ function CharacterSlot({ url, charIndex, playerName, bubbleDelayMs }) {
       const dt = clock.getDelta();
       if (mixer) mixer.update(dt);
       if (model) {
-        rotationY += dt * 0.25; // slow realistic spin
+        rotationY += dt * spinRate;
         model.rotation.y = rotationY;
       }
       const cW = canvas.clientWidth, cH = canvas.clientHeight;
@@ -858,45 +900,67 @@ function CharacterSlot({ url, charIndex, playerName, bubbleDelayMs }) {
     };
   }, [url, charIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Speech bubble ────────────────────────────────────────────────────────────
+  // ── Forced reaction (card play) ───────────────────────────────────────────────
   useEffect(() => {
+    if (!forceReactLine) return;
+    setBubble(forceReactLine);
+    setShowBubble(true);
+    if (gameActive) narrateCharacter(forceReactLine, charIndex);
+    const t = setTimeout(() => setShowBubble(false), 3500);
+    return () => clearTimeout(t);
+  }, [forceReactLine]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Periodic speech bubble (only during active game, infrequent) ─────────────
+  useEffect(() => {
+    if (!gameActive) return; // silent on home page & waiting room
     let showT, hideT, cycleT;
+
+    function pickLine() {
+      // Rotate through hype → sassy → hype for organic feel
+      const pool = Math.random() < 0.55 ? HYPE_LINES : SASSY_LINES;
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+
     function showLine() {
-      const line = SUPPORT_LINES[Math.floor(Math.random() * SUPPORT_LINES.length)];
+      const line = pickLine();
       setBubble(line);
       setShowBubble(true);
       narrateCharacter(line, charIndex);
-      hideT  = setTimeout(() => setShowBubble(false), 4000);
-      cycleT = setTimeout(showLine, 14000 + Math.random() * 8000);
+      hideT  = setTimeout(() => setShowBubble(false), 4500);
+      cycleT = setTimeout(showLine, 32000 + Math.random() * 22000); // 32–54 s gap
     }
     showT = setTimeout(showLine, bubbleDelayMs);
     return () => { clearTimeout(showT); clearTimeout(hideT); clearTimeout(cycleT); };
-  }, [bubbleDelayMs, charIndex]);
+  }, [gameActive, bubbleDelayMs, charIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const W = slim ? 110 : 140;
+  const H = slim ? 340 : 420;
 
   return (
-    <div style={{ position: 'relative', width: 150, height: 420, flexShrink: 0 }}>
+    <div style={{ position: 'relative', width: W, height: H, flexShrink: 0 }}>
       {/* Speech bubble */}
       <div style={{
         position: 'absolute', bottom: '102%', left: '50%',
         transform: 'translateX(-50%)',
-        background: 'rgba(15,10,30,0.92)',
-        border: '1px solid rgba(255,255,255,0.15)',
+        background: 'rgba(15,10,30,0.93)',
+        border: '1px solid rgba(180,130,255,0.35)',
         borderRadius: 12, padding: '6px 10px',
         whiteSpace: 'nowrap', fontSize: 11, fontWeight: 600,
-        color: '#e8d5ff', pointerEvents: 'none',
+        color: '#ead8ff', pointerEvents: 'none',
         opacity: showBubble ? 1 : 0, transition: 'opacity 0.4s ease',
-        zIndex: 20, boxShadow: '0 2px 12px rgba(120,60,200,0.3)',
+        zIndex: 30, boxShadow: '0 2px 16px rgba(120,60,200,0.4)',
+        maxWidth: 220,
       }}>
         {bubble}
         <div style={{
           position: 'absolute', bottom: -7, left: '50%', transform: 'translateX(-50%)',
           width: 0, height: 0,
           borderLeft: '7px solid transparent', borderRight: '7px solid transparent',
-          borderTop: '7px solid rgba(255,255,255,0.15)',
+          borderTop: '7px solid rgba(180,130,255,0.35)',
         }} />
       </div>
 
-      {/* Character canvas — transparent background blends with casino scene */}
+      {/* Character canvas */}
       <canvas
         ref={canvasRef}
         style={{
@@ -920,10 +984,23 @@ function CharacterSlot({ url, charIndex, playerName, bubbleDelayMs }) {
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export default function CasinoBackground({ city = "lasvegas", cheering = false, players = [] }) {
+export default function CasinoBackground({
+  city          = "lasvegas",
+  cheering      = false,
+  players       = [],
+  gameActive    = false,   // true only while game.phase === "playing"
+  reactionTrigger = 0,     // bumped by parent whenever a card is played
+  lossTarget    = -1,      // player index that just suffered a negative action
+}) {
   const canvasRef  = useRef(null);
   const stateRef   = useRef({ city, cheering });
   const cleanupRef = useRef(null);
+
+  // Which slot is reacting to a card play, and what line it shows
+  const [reactingSlot,     setReactingSlot]     = useState(-1);
+  const [reactingLine,     setReactingLine]      = useState('');
+  const [lossSlot,         setLossSlot]          = useState(-1);
+  const [lossLine,         setLossLine]          = useState('');
 
   useEffect(() => { stateRef.current.cheering = cheering; }, [cheering]);
   useEffect(() => { stateRef.current.city = city; }, [city]);
@@ -936,19 +1013,48 @@ export default function CasinoBackground({ city = "lasvegas", cheering = false, 
     return () => { if (cleanupRef.current) cleanupRef.current(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // One girl per player; home page shows 2 decorative girls
+  // One girl per player (up to CHAR_POOL.length); home page gets 2 decorative girls
   const slots = players.length > 0
     ? players.slice(0, CHAR_POOL.length).map((p, i) => ({
-        url:          CHAR_POOL[i].url,
-        playerName:   p.name,
-        bubbleDelayMs: 6000 + i * 3000,
+        url:           CHAR_POOL[i % CHAR_POOL.length].url,
+        playerName:    p.name,
+        bubbleDelayMs: 8000 + i * 4000,
       }))
     : [
-        { url: CHAR_POOL[0].url, playerName: '', bubbleDelayMs: 7000 },
-        { url: CHAR_POOL[5].url, playerName: '', bubbleDelayMs: 11000 },
+        { url: CHAR_POOL[0].url, playerName: '', bubbleDelayMs: 9000  },
+        { url: CHAR_POOL[5].url, playerName: '', bubbleDelayMs: 15000 },
       ];
 
+  // Card-play reaction: random character reacts with a hype or card-react line
+  useEffect(() => {
+    if (!reactionTrigger || slots.length === 0) return;
+    const idx  = Math.floor(Math.random() * slots.length);
+    // 60% card-react burst, 40% full hype line
+    const pool = Math.random() < 0.6 ? CARD_REACT_LINES : HYPE_LINES;
+    const line = pool[Math.floor(Math.random() * pool.length)];
+    setReactingSlot(idx);
+    setReactingLine(line);
+    const t = setTimeout(() => setReactingSlot(-1), 4000);
+    return () => clearTimeout(t);
+  }, [reactionTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Loss/negative-action reaction: targeted character shows sympathy or sass
+  useEffect(() => {
+    if (lossTarget < 0 || slots.length === 0) return;
+    const idx  = lossTarget % slots.length;
+    // 70% loss line, 30% sassy comment about the negative play
+    const pool = Math.random() < 0.7 ? LOSS_LINES : SASSY_LINES;
+    const line = pool[Math.floor(Math.random() * pool.length)];
+    setLossSlot(idx);
+    setLossLine(line);
+    const t = setTimeout(() => setLossSlot(-1), 5000);
+    return () => clearTimeout(t);
+  }, [lossTarget]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const positions = getPositions(slots.length);
+
+  // Mobile slot: always show slot[0] (smallest one, no name)
+  const mobileSlot = slots[0] ?? null;
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 0 }}>
@@ -956,8 +1062,29 @@ export default function CasinoBackground({ city = "lasvegas", cheering = false, 
         ref={canvasRef}
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}
       />
-      {/* Characters — desktop only */}
-      <div className="hidden sm:block" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+
+      {/* Mobile: single slim character, bottom-right corner */}
+      {mobileSlot && (
+        <div className="sm:hidden" style={{
+          position: 'absolute', bottom: 0, right: 8,
+          zIndex: 18, pointerEvents: 'none',
+        }}>
+          <CharacterSlot
+            url={mobileSlot.url}
+            charIndex={0}
+            playerName=""
+            bubbleDelayMs={12000}
+            gameActive={gameActive}
+            forceReactLine={reactingSlot === 0 ? reactingLine : (lossSlot === 0 ? lossLine : '')}
+            slim
+          />
+        </div>
+      )}
+
+      {/* Desktop: one girl per player, clustered near screen edges, above game board */}
+      <div className="hidden sm:block" style={{
+        position: 'fixed', inset: 0, zIndex: 18, pointerEvents: 'none',
+      }}>
         {slots.map((slot, i) => (
           <div
             key={slot.url + i}
@@ -968,6 +1095,11 @@ export default function CasinoBackground({ city = "lasvegas", cheering = false, 
               charIndex={i}
               playerName={slot.playerName}
               bubbleDelayMs={slot.bubbleDelayMs}
+              gameActive={gameActive}
+              forceReactLine={
+                reactingSlot === i ? reactingLine :
+                lossSlot     === i ? lossLine     : ''
+              }
             />
           </div>
         ))}
