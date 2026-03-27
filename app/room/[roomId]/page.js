@@ -5,6 +5,7 @@ import GameBoard from "@/components/GameBoard";
 import CasinoBackground from "@/components/CasinoBackground";
 import MusicPlayer from "@/components/MusicPlayer";
 import { getMusicPlayer } from "@/lib/pixabayMusic";
+import { setNarratorEnabled } from "@/lib/narrator";
 
 const POLL_INTERVAL       = 2000;  // 2 s — halves Redis usage, still fast enough
 const MAX_PLAYERS         = 4;
@@ -50,8 +51,10 @@ export default function RoomPage() {
     if (!soundOn) {
       // Stop Pixabay music when turning off
       if (typeof window !== "undefined") getMusicPlayer().stop();
+      setNarratorEnabled(false);
       return;
     }
+    setNarratorEnabled(true);
     // Enable SFX via Web Audio (separate from background music)
     import("@/lib/sounds").then((m) => {
       soundsRef.current = m;
@@ -286,7 +289,7 @@ export default function RoomPage() {
       <CasinoBackground city={city} cheering={state?.phase === "ended"} players={state?.players ?? []} />
       <div className="relative z-10 h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-black/60 backdrop-blur-md border-b border-white/10 flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-2 bg-black/92 border-b border-white/10 flex-shrink-0">
         <div className="flex items-center gap-1">
           <span className="text-white font-black text-lg">Property</span>
           <span className="text-indigo-400 font-black text-lg">Rush</span>

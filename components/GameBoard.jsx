@@ -1,9 +1,14 @@
 "use client";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import Card from "./Card";
 import AssetDisplay from "./AssetDisplay";
 import ActionModal from "./ActionModal";
 import { COLORS, countCompletedSets } from "@/lib/cards";
+import { narrateYourTurn, narrateWin, narrateSpeak, narrateCardPlay, narrateJustSayNo } from "@/lib/narrator";
 
 const AVATAR_COLORS = ["bg-rose-600/70","bg-indigo-600/70","bg-amber-600/70","bg-emerald-600/70"];
 
@@ -21,12 +26,48 @@ export default function GameBoard({ state, myId, onMove, error }) {
   const [showFullLog,    setShowFullLog]    = useState(false);
   const [cheering,       setCheering]       = useState(false);
 
-  // Cheer when game ends
+  const prevTurnRef = useRef(null);
+
+  // Cheer + narrate when game ends
   useEffect(() => {
     if (state?.phase === "ended") {
       setCheering(true);
+      const isMe = state.winnerId === myId;
+      narrateWin(isMe ? "You" : (state.winner ?? "Someone"));
     }
-  }, [state?.phase]);
+  }, [state?.phase]); // eslint-disable-line
+
+  // Narrate when it becomes my turn
+  useEffect(() => {
+    if (!state) return;
+    const cur = state.turnIndex;
+    if (cur !== prevTurnRef.current) {
+      prevTurnRef.current = cur;
+      const myIdx2 = state.players?.findIndex((p) => p.id === myId) ?? -1;
+      if (cur === myIdx2 && state.phase === "playing") narrateYourTurn();
+    }
+  }, [state?.turnIndex]); // eslint-disable-line
+
+  // Narrate pending actions targeting me
+  useEffect(() => {
+    if (!state?.pendingAction) return;
+    const myIdx2 = state.players?.findIndex((p) => p.id === myId) ?? -1;
+    const pa = state.pendingAction;
+    const targetsMe = pa.toIdx === myIdx2 ||
+      (Array.isArray(pa.toIdxList) && pa.toIdxList.includes(myIdx2));
+    if (targetsMe && pa.type !== "pay-choice") {
+      const actionPhrases = {
+        debtcollector: "Debt Collector — you owe money!",
+        birthday: "Pay up for their birthday!",
+        slydeal: "Someone is stealing your property!",
+        dealbreaker: "Your full set is being taken!",
+        rent: "Rent is due!",
+        forceddeal: "Forced Deal — make a trade!",
+        wreckingball: "Wrecking Ball incoming!",
+      };
+      if (actionPhrases[pa.type]) narrateSpeak(actionPhrases[pa.type], 0.9, 1.2);
+    }
+  }, [state?.pendingAction?.id]); // eslint-disable-line
 
   if (!state) return <LoadingScreen />;
 
@@ -86,6 +127,9 @@ export default function GameBoard({ state, myId, onMove, error }) {
 
   const handleModalConfirm = useCallback(async (params) => {
     if (!selectedCard) return;
+    // Narrate card being played
+    if (selectedCard.action === "justsayno") narrateJustSayNo();
+    else narrateCardPlay(selectedCard);
     const move = { cardId: selectedCard.id, type: "play", ...(targetPlayer && !params?.asBank ? { targetPlayerIdx: targetPlayer.playerIdx } : {}), ...params };
     setSelectedCard(null); setModalMode(null); setTargetPlayer(null);
     await onMove(move);
@@ -212,7 +256,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
       ══════════════════════════════════════════════════════════════════════ */}
 
       {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-2 bg-black/60 backdrop-blur-md border-b border-white/10 flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-2 bg-black/92 border-b border-white/10 flex-shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-2xl">💰</span>
           <div>
@@ -254,9 +298,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
 
           {/* OPPONENTS — visible on the "table" */}
           <div className="flex-shrink-0">
-            <div className="px-3 pt-2 pb-1 text-slate-500 text-xs font-bold uppercase tracking-widest">
-              Players on Table
-            </div>
+            <div className="bg-slate-900/90 px-3 py-1 text-slate-400 text-xs font-bold uppercase tracking-widest">PLAYERS ON TABLE</div>
 
             {/* On mobile: horizontal scroll. On desktop: vertical list */}
             <div className="flex md:flex-col overflow-x-auto md:overflow-x-visible gap-2 px-2 pb-2">
@@ -268,7 +310,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
                 return (
                   <div
                     key={opp.id}
-                    className="flex-shrink-0 md:flex-shrink bg-black/40 backdrop-blur-sm rounded-2xl p-3 border border-white/5"
+                    className="flex-shrink-0 md:flex-shrink bg-slate-900/95 rounded-2xl p-3 border border-white/10"
                     style={{ minWidth: 220 }}
                   >
                     {/* Header */}
@@ -299,7 +341,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
 
           {/* MY ASSETS — visible on table for all to see */}
           <div className="flex-1 p-3">
-            <div className="bg-indigo-900/30 backdrop-blur-sm rounded-2xl p-3 border border-indigo-500/20 h-full">
+            <div className="bg-indigo-950/90 rounded-2xl p-3 border border-indigo-500/20 h-full">
               <div className="flex items-center gap-2 mb-2">
                 <div className={`w-7 h-7 rounded-full flex-shrink-0 ${AVATAR_COLORS[myIdx % AVATAR_COLORS.length]} flex items-center justify-center text-white font-black text-sm ${isMyTurn ? "ring-2 ring-emerald-400 turn-pulse" : ""}`}>
                   {me?.name?.[0]?.toUpperCase()}
@@ -350,7 +392,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
           </div>
 
           {/* MY HAND ZONE */}
-          <div className="bg-slate-900/75 backdrop-blur-sm flex-shrink-0 overflow-visible">
+          <div className="bg-slate-900/97 flex-shrink-0 overflow-visible border-t border-white/5">
             {/* Errors */}
             {(error || actionError) && (
               <div className="mx-3 mt-2 px-3 py-1.5 rounded-xl bg-red-900/60 border border-red-500/30 text-red-300 text-xs">
@@ -472,16 +514,112 @@ function LoadingScreen() {
   );
 }
 
+// Mini Three.js canvas for a single GLB model (used in win overlay)
+function ModelCanvas({ url, width, height, spinDir = 1 }) {
+  const canvasRef = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace  = THREE.SRGBColorSpace;
+    renderer.toneMapping       = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+
+    const scene  = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, width / height, 0.01, 100);
+
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    pmrem.compileEquirectangularShader();
+    scene.environment = pmrem.fromScene(new THREE.RoomEnvironment()).texture;
+    pmrem.dispose();
+
+    scene.add(new THREE.AmbientLight(0xffffff, 2.0));
+    const key = new THREE.DirectionalLight(0xfff4e0, 2.5);
+    key.position.set(1.5, 3, 2); scene.add(key);
+    const fill = new THREE.DirectionalLight(0xaabbff, 0.8);
+    fill.position.set(-2, 1, 1); scene.add(fill);
+
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('/draco/');
+    const loader = new GLTFLoader();
+    loader.setDRACOLoader(dracoLoader);
+
+    let mixer = null, model = null, rafId = null, rotY = 0;
+
+    loader.load(url, (gltf) => {
+      model = gltf.scene;
+      const box    = new THREE.Box3().setFromObject(model);
+      const size   = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const scale  = 2.0 / Math.max(size.x, size.y, size.z);
+      model.scale.setScalar(scale);
+      model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+      scene.add(model);
+      const scaledH = size.y * scale;
+      camera.position.set(0, scaledH * 0.42, scaledH * 1.1);
+      camera.lookAt(0, scaledH * 0.42, 0);
+      if (gltf.animations.length > 0) {
+        mixer = new THREE.AnimationMixer(model);
+        mixer.clipAction(gltf.animations[0]).play();
+      }
+      setVisible(true);
+    });
+
+    const clock = new THREE.Clock();
+    function animate() {
+      rafId = requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+      if (mixer) mixer.update(dt);
+      if (model) { rotY += dt * 0.25 * spinDir; model.rotation.y = rotY; }
+      renderer.setSize(canvas.clientWidth || width, canvas.clientHeight || height, false);
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    return () => { cancelAnimationFrame(rafId); renderer.dispose(); dracoLoader.dispose(); scene.clear(); };
+  }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ display: 'block', width, height, opacity: visible ? 1 : 0, transition: 'opacity 1.5s ease' }}
+    />
+  );
+}
+
 function WinnerOverlay({ winnerName, isMe, onRestart }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="bg-slate-800 border border-white/10 rounded-3xl p-8 text-center shadow-2xl max-w-sm w-full mx-4">
-        <div className="text-6xl mb-4">{isMe ? "🏆" : "💔"}</div>
-        <h2 className="text-white font-black text-3xl mb-2">{isMe ? "You Win!" : "Game Over"}</h2>
-        <p className="text-slate-300 text-sm mb-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/92">
+      {/* Skye — win celebration, right side */}
+      <div className="hidden sm:block absolute right-0 bottom-0 pointer-events-none">
+        <ModelCanvas url="/models/skye.glb"   width={280} height={580} spinDir={1}  />
+      </div>
+      {/* Crimson Diva — left side */}
+      <div className="hidden md:block absolute left-0 bottom-0 pointer-events-none">
+        <ModelCanvas url="/models/crimson.glb" width={240} height={520} spinDir={-1} />
+      </div>
+
+      {/* Central card */}
+      <div className="relative z-10 bg-slate-900/95 border border-white/15 rounded-3xl p-8 text-center shadow-2xl max-w-sm w-full mx-4">
+        <div className="text-6xl mb-3">{isMe ? "🏆" : "💔"}</div>
+        {isMe && (
+          <div className="flex justify-center gap-1 mb-3">
+            {"✨🎉✨".split("").map((e, i) => <span key={i} className="text-xl">{e}</span>)}
+          </div>
+        )}
+        <h2 className="text-white font-black text-3xl mb-2">
+          {isMe ? "You Win!" : "Game Over"}
+        </h2>
+        <p className="text-slate-300 text-sm mb-1">
           {isMe ? "You completed 3 property sets first!" : `${winnerName} won this round.`}
         </p>
-        <button onClick={onRestart} className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-lg transition-colors">
+        {isMe && <p className="text-yellow-400 text-xs font-semibold mb-6">Congratulations, champion! 🌟</p>}
+        {!isMe && <p className="text-slate-500 text-xs mb-6">Better luck next round!</p>}
+        <button onClick={onRestart} className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-lg transition-colors shadow-lg shadow-indigo-500/25">
           Play Again
         </button>
       </div>

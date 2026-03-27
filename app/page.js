@@ -118,20 +118,20 @@ export default function HomePage() {
     <div className="min-h-full flex flex-col relative">
       <CasinoBackground city={city} />
       <div className="relative z-10 flex flex-col min-h-full">
-      <div className="flex flex-col items-center pt-12 pb-6 px-4 text-center">
-        <div className="flex gap-2 mb-6">
+      <div className="flex flex-col items-center pt-5 sm:pt-12 pb-3 sm:pb-6 px-4 text-center">
+        <div className="hidden sm:flex gap-2 mb-6">
           {COLOR_PILLS.map((p, i) => (
             <div key={i} className="w-3 h-3 rounded-full opacity-80" style={{ backgroundColor: p.color }} />
           ))}
         </div>
-        <h1 className="text-5xl font-black tracking-tight text-white leading-none">
+        <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white leading-none">
           Property<span className="text-indigo-400">Rush</span>
         </h1>
-        <p className="text-slate-400 text-base mt-3 max-w-xs">
+        <p className="hidden sm:block text-slate-400 text-base mt-3 max-w-xs">
           The fast property trading card game.<br />
           Collect 3 sets before your opponents do.
         </p>
-        <div className="flex flex-wrap gap-2 mt-5 justify-center">
+        <div className="hidden sm:flex flex-wrap gap-2 mt-5 justify-center">
           {["2–4 Players", "~15 min", "Strategy + Luck", "No signup"].map((f) => (
             <span key={f} className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 text-xs font-medium">{f}</span>
           ))}
@@ -139,8 +139,8 @@ export default function HomePage() {
       </div>
 
       <div className="flex-1 flex flex-col items-center px-4 pb-8">
-        {/* City background selector */}
-        <div className="w-full max-w-sm mb-4">
+        {/* City background selector — desktop only */}
+        <div className="hidden sm:block w-full max-w-sm mb-4">
           <div className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 text-center">🌆 Casino Scene</div>
           <div className="grid grid-cols-3 gap-1.5">
             {Object.entries(CITY_CONFIGS).map(([key, cfg]) => (
@@ -177,7 +177,7 @@ export default function HomePage() {
             </button>
           </div>
         )}
-        <div className="w-full max-w-sm bg-slate-900/85 backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl p-6">
+        <div className="w-full max-w-sm bg-slate-900/85 backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl p-4 sm:p-6">
           <div className="flex rounded-2xl bg-slate-900/60 p-1 mb-6 gap-1">
             <TabBtn active={tab === "create"} onClick={() => { setTab("create"); setErr(""); }}>Create Room</TabBtn>
             <TabBtn active={tab === "join"}   onClick={() => { setTab("join");   setErr(""); }}>Join Room</TabBtn>
@@ -253,7 +253,22 @@ export default function HomePage() {
           </button>
         </div>
 
-        <div className="w-full max-w-sm mt-6">
+        {/* Card Gallery link — desktop only */}
+        <div className="hidden sm:block w-full max-w-sm mt-4">
+          <a href="/cards" className="flex items-center justify-between w-full px-4 py-3 rounded-2xl bg-gradient-to-r from-violet-900/60 to-indigo-900/60 border border-violet-500/25 hover:border-violet-400/40 transition-all group">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🃏</span>
+              <div>
+                <div className="text-white font-bold text-sm group-hover:text-violet-300 transition-colors">Card Gallery</div>
+                <div className="text-white/40 text-xs">View all 110 cards & their effects</div>
+              </div>
+            </div>
+            <span className="text-white/40 group-hover:text-white transition-colors">→</span>
+          </a>
+        </div>
+
+        {/* How to Play — desktop only */}
+        <div className="hidden sm:block w-full max-w-sm mt-3">
           <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-4">
             <h3 className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">How to Play</h3>
             <div className="space-y-2">
@@ -273,7 +288,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <footer className="text-center py-4 px-4 text-slate-600 text-xs border-t border-white/5">
+      <footer className="hidden sm:block text-center py-4 px-4 text-slate-600 text-xs border-t border-white/5">
         This is a prototype demo. Not affiliated with any brand. No real-money gameplay.
       </footer>
       </div>

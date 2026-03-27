@@ -1,169 +1,375 @@
 "use client";
 import { COLORS } from "@/lib/cards";
 
-// ─── Color config ─────────────────────────────────────────────────────────────
-const COLOR_STYLES = {
-  brown:     { gradient: "from-amber-700 to-amber-900",    border: "border-amber-500",   dot: "#92400e" },
-  lightblue: { gradient: "from-sky-400 to-sky-600",        border: "border-sky-300",     dot: "#0ea5e9" },
-  pink:      { gradient: "from-pink-400 to-pink-600",      border: "border-pink-300",    dot: "#ec4899" },
-  orange:    { gradient: "from-orange-500 to-orange-700",  border: "border-orange-400",  dot: "#f97316" },
-  red:       { gradient: "from-red-500 to-red-700",        border: "border-red-400",     dot: "#ef4444" },
-  yellow:    { gradient: "from-yellow-400 to-yellow-600",  border: "border-yellow-300",  dot: "#eab308" },
-  green:     { gradient: "from-green-500 to-green-700",    border: "border-green-400",   dot: "#22c55e" },
-  blue:      { gradient: "from-blue-500 to-blue-700",      border: "border-blue-400",    dot: "#3b82f6" },
-  railroad:  { gradient: "from-slate-500 to-slate-700",    border: "border-slate-400",   dot: "#6b7280" },
-  utility:   { gradient: "from-teal-500 to-teal-700",      border: "border-teal-400",    dot: "#14b8a6" },
+// ── Color palette ─────────────────────────────────────────────────────────────
+const COLOR_THEME = {
+  brown:     { bg:"#7c4a1e", band:"#5c3212", text:"#ffd8a0", dot:"#92400e",  label:"Brown"     },
+  lightblue: { bg:"#0e7ab8", band:"#0a5e8e", text:"#d0f0ff", dot:"#0ea5e9",  label:"Light Blue" },
+  pink:      { bg:"#c0206c", band:"#a01858", text:"#ffe0f0", dot:"#ec4899",  label:"Pink"       },
+  orange:    { bg:"#c44a00", band:"#a03500", text:"#ffe0b0", dot:"#f97316",  label:"Orange"     },
+  red:       { bg:"#b01212", band:"#8a0c0c", text:"#ffd0d0", dot:"#ef4444",  label:"Red"        },
+  yellow:    { bg:"#b08800", band:"#8a6600", text:"#fff8c0", dot:"#eab308",  label:"Yellow"     },
+  green:     { bg:"#0a7a28", band:"#076020", text:"#c8ffd0", dot:"#22c55e",  label:"Green"      },
+  blue:      { bg:"#0a38c0", band:"#082ba0", text:"#c0d8ff", dot:"#3b82f6",  label:"Blue"       },
+  railroad:  { bg:"#3a3a4a", band:"#28282e", text:"#dde4ee", dot:"#6b7280",  label:"Railroad"   },
+  utility:   { bg:"#0a6a68", band:"#085058", text:"#c0f8f5", dot:"#14b8a6",  label:"Utility"    },
 };
 
-const COLOR_DOTS = {
-  brown: "#92400e", lightblue: "#0ea5e9", pink: "#ec4899", orange: "#f97316",
-  red: "#ef4444",   yellow: "#eab308",   green: "#22c55e", blue: "#3b82f6",
-  railroad: "#6b7280", utility: "#14b8a6",
+const ACTION_ICONS = {
+  passgo:        "🚀", debtcollector: "💸", birthday:      "🎂",
+  slydeal:       "🦊", dealbreaker:   "💣", doublerent:    "✖️",
+  justsayno:     "🚫", identityswap:  "🔄", taxtherich:    "🏛️",
+  timewarp:      "⏳", chaoscard:     "🌀", forceddeal:    "⚡",
+  wreckingball:  "🔨", propertytax:   "📋", secondchance:  "🔁",
+  rent:          "🏠",
 };
 
-const TYPE_CONFIG = {
-  money:    { gradient: "from-emerald-400 to-emerald-700", border: "border-emerald-300", label: "MONEY"    },
-  action:   { gradient: "from-sky-500 to-indigo-700",      border: "border-sky-400",     label: "ACTION"   },
-  rent:     { gradient: "from-violet-500 to-purple-800",   border: "border-violet-400",  label: "RENT"     },
-  hidden:   { gradient: "from-slate-600 to-slate-800",     border: "border-slate-500",   label: ""         },
-  property: { gradient: "", border: "", label: "PROPERTY" },
+const MONEY_COLORS = {
+  1:  { bg:"#c8e8b0", dark:"#4a7a28", light:"#eafcd8" },
+  2:  { bg:"#b0d4f0", dark:"#2a5a8a", light:"#d8edff" },
+  3:  { bg:"#f0d0b0", dark:"#8a5020", light:"#fff0d8" },
+  4:  { bg:"#d8b0e8", dark:"#5a2a8a", light:"#f4e0ff" },
+  5:  { bg:"#f0b0b0", dark:"#8a2020", light:"#ffd8d8" },
+  10: { bg:"#f0e8a0", dark:"#8a7a10", light:"#fffcd8" },
 };
 
-export default function Card({ card, onClick, selected, small, dimmed }) {
-  if (!card) return null;
-
-  const isHidden   = card.type === "hidden";
-  const isWild     = card.type === "wildproperty";
-  const isProperty = card.type === "property";
-
-  if (isHidden) {
-    return (
-      <div
-        className={`
-          ${small ? "w-10 h-14" : "w-[72px] h-[100px]"}
-          rounded-xl border-2 border-slate-600
-          bg-gradient-to-br from-slate-700 to-slate-900
-          flex items-center justify-center shadow-lg flex-shrink-0
-        `}
-      >
-        <div className="text-2xl opacity-40 select-none">🃏</div>
+// ── Rent table mini (property card bottom) ────────────────────────────────────
+function RentTable({ color, small }) {
+  const col = COLORS[color];
+  if (!col || small) return null;
+  return (
+    <div className="w-full px-1 pb-0.5">
+      <div className="rounded overflow-hidden border border-black/20">
+        <div className="grid text-center" style={{ gridTemplateColumns: `repeat(${col.rents.length},1fr)`, fontSize:6 }}>
+          {col.rents.map((r,i) => (
+            <div key={i} className={`py-0.5 ${i===col.rents.length-1 ? 'bg-yellow-400 text-black font-black' : 'bg-white/20 text-white'}`}
+              style={{ borderRight: i<col.rents.length-1 ? '1px solid rgba(0,0,0,0.2)' : 'none' }}>
+              {i===0 ? '–' : `$${r}M`}
+            </div>
+          ))}
+        </div>
+        <div className="grid text-center" style={{ gridTemplateColumns: `repeat(${col.rents.length},1fr)`, fontSize:5, background:'rgba(0,0,0,0.25)' }}>
+          {col.rents.map((_,i) => (
+            <div key={i} className="py-0.5 text-white/50" style={{ borderRight: i<col.rents.length-1 ? '1px solid rgba(0,0,0,0.15)' : 'none' }}>
+              {i===0 ? '0' : i}🏠
+            </div>
+          ))}
+        </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
-  // Wild property — placed (has .color set) shows as the assigned color
-  // Wild property — in hand (color=null) shows rainbow/special style
-  const wildPlaced    = isWild && card.color;
-  const wildInHand    = isWild && !card.color;
-
-  const colorStyle    = (isProperty || wildPlaced) ? COLOR_STYLES[card.color] : null;
-  const typeConf      = (!isProperty && !wildPlaced) ? (TYPE_CONFIG[card.type] ?? TYPE_CONFIG.action) : null;
-  const gradient      = colorStyle?.gradient ?? typeConf?.gradient ?? "from-indigo-500 to-purple-700";
-  const border        = colorStyle?.border   ?? typeConf?.border   ?? "border-indigo-400";
+// ── Property card ─────────────────────────────────────────────────────────────
+function PropertyCard({ card, small, selected, dimmed, onClick }) {
+  const theme = COLOR_THEME[card.color] || COLOR_THEME.brown;
+  const rents = COLORS[card.color]?.rents ?? [];
+  const maxRent = rents[rents.length - 1] ?? 0;
 
   return (
     <div
       onClick={onClick}
-      className={`
-        ${small ? "w-10 h-14" : "w-[72px] h-[100px]"}
-        rounded-xl border-2 ${border}
-        ${wildInHand ? "" : `bg-gradient-to-br ${gradient}`}
-        flex flex-col shadow-lg flex-shrink-0
-        cursor-pointer select-none
-        transition-all duration-150 ease-out
-        card-3d
-        ${selected
-          ? "card-3d-selected ring-2 ring-white ring-offset-1 ring-offset-transparent"
-          : ""
-        }
+      className={`flex flex-col flex-shrink-0 select-none cursor-pointer rounded-xl overflow-hidden shadow-2xl
+        transition-all duration-150 card-3d
+        ${small ? "w-10 h-14" : "w-[72px] h-[104px]"}
+        ${selected ? "card-3d-selected ring-2 ring-yellow-300 ring-offset-1" : ""}
         ${dimmed ? "opacity-40 pointer-events-none" : ""}
-        overflow-hidden relative
       `}
-      style={wildInHand ? {
-        background: "linear-gradient(135deg, #7c3aed, #2563eb, #059669, #d97706, #dc2626)",
-      } : undefined}
+      style={{ background: theme.bg, border: `2px solid ${theme.band}` }}
     >
-      {/* Top value badge */}
-      {!small && card.value != null && (
-        <div className="absolute top-1 left-1 bg-black/30 backdrop-blur-sm rounded px-1 text-white font-bold"
-          style={{ fontSize: 9 }}>
-          ${card.value}M
-        </div>
-      )}
+      {/* Color band header */}
+      <div className="flex items-center justify-between px-1" style={{ background:theme.band, minHeight: small?14:18 }}>
+        <span className="font-black text-white leading-none truncate" style={{ fontSize: small?5:8 }}>
+          {theme.label.toUpperCase()}
+        </span>
+        {!small && (
+          <span className="font-black text-white/90 leading-none" style={{ fontSize:8 }}>${card.value}M</span>
+        )}
+      </div>
 
       {/* Body */}
-      <div className="flex-1 flex flex-col items-center justify-center px-1 pt-3">
-        {card.type === "money" ? (
-          <div className="text-center">
-            <div className="text-white font-black text-xl leading-none drop-shadow">${card.value}M</div>
-            <div className="text-white/70 font-semibold mt-0.5" style={{ fontSize: 8 }}>MILLION</div>
+      <div className="flex-1 flex flex-col items-center justify-between py-0.5 px-0.5">
+        {/* Property name */}
+        <div className="text-center w-full px-0.5 flex-1 flex items-center justify-center">
+          <div className="font-bold leading-tight text-center" style={{ fontSize:small?5:7.5, color:theme.text, textShadow:'0 1px 2px rgba(0,0,0,0.5)', lineHeight:'1.15' }}>
+            {card.name}
           </div>
-        ) : (isProperty || wildPlaced) ? (
-          <div className="text-center w-full px-1">
-            <div className="text-white/60 uppercase font-bold tracking-wider" style={{ fontSize: 7 }}>
-              {COLORS[card.color]?.label}
-            </div>
-            <div className="text-white font-bold leading-tight mt-0.5 text-center break-words" style={{ fontSize: 8 }}>
-              {card.name}
-            </div>
-          </div>
-        ) : wildInHand ? (
-          <div className="text-center w-full px-1">
-            <div className="text-white font-black leading-none" style={{ fontSize: 10 }}>★ WILD</div>
-            <div className="text-white/80 leading-tight mt-0.5" style={{ fontSize: 7 }}>
-              {card.colors ? card.colors.map((c) => COLORS[c]?.label).join("/") : "ANY"}
-            </div>
-            {!small && card.colors && (
-              <div className="flex gap-0.5 justify-center mt-1 flex-wrap">
-                {card.colors.map((c) => (
-                  <span key={c} className="rounded-full w-2.5 h-2.5 border border-white/40" style={{ backgroundColor: COLOR_DOTS[c] }} />
-                ))}
-              </div>
-            )}
-            {!small && !card.colors && (
-              <div className="flex gap-0.5 justify-center mt-1 flex-wrap">
-                {Object.keys(COLOR_DOTS).map((c) => (
-                  <span key={c} className="rounded-full w-1.5 h-1.5" style={{ backgroundColor: COLOR_DOTS[c] }} />
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="text-center w-full px-1">
-            <div className="text-white font-bold leading-tight" style={{ fontSize: 9 }}>
-              {card.name}
-            </div>
-            {!small && card.desc && (
-              <div className="text-white/70 mt-1 leading-tight" style={{ fontSize: 7 }}>
-                {card.desc}
-              </div>
-            )}
-            {card.type === "rent" && card.colors && !small && (
-              <div className="flex gap-0.5 justify-center mt-1.5 flex-wrap">
-                {card.colors.map((c) => (
-                  <span
-                    key={c}
-                    className="rounded-full w-3 h-3 border border-white/40"
-                    style={{ backgroundColor: COLOR_DOTS[c] }}
-                  />
-                ))}
-              </div>
-            )}
-            {card.type === "rent" && !card.colors && !small && (
-              <div className="text-yellow-300 font-bold mt-1" style={{ fontSize: 7 }}>✦ ANY COLOR</div>
-            )}
+        </div>
+
+        {/* Rent table */}
+        {!small && <RentTable color={card.color} />}
+
+        {/* Max rent badge */}
+        {!small && (
+          <div className="text-center pb-0.5">
+            <span className="bg-yellow-400 text-black font-black rounded px-1" style={{ fontSize:7 }}>
+              MAX ${maxRent}M
+            </span>
           </div>
         )}
       </div>
 
-      {/* Bottom type label */}
+      {/* Bottom label */}
       {!small && (
-        <div className="bg-black/25 text-center py-0.5">
-          <span className="text-white/60 uppercase tracking-widest font-bold" style={{ fontSize: 6 }}>
-            {(isProperty || wildPlaced) ? "PROPERTY" : isWild ? "WILD PROP" : card.type.toUpperCase()}
+        <div className="text-center py-0.5" style={{ background:'rgba(0,0,0,0.3)' }}>
+          <span className="text-white/60 uppercase tracking-widest font-bold" style={{ fontSize:5 }}>PROPERTY</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Wild property card ────────────────────────────────────────────────────────
+function WildPropertyCard({ card, small, selected, dimmed, onClick }) {
+  const cols = card.colors ?? Object.keys(COLOR_THEME).slice(0, 5);
+  const isAny = !card.colors;
+
+  // Build gradient from the card's colors
+  const stops = cols.map((c, i) => {
+    const pct = (i / (cols.length - 1 || 1)) * 100;
+    return `${COLOR_THEME[c]?.bg ?? '#888'} ${pct}%`;
+  });
+  const gradStyle = { background: `linear-gradient(135deg, ${stops.join(', ')})` };
+
+  return (
+    <div
+      onClick={onClick}
+      className={`flex flex-col flex-shrink-0 select-none cursor-pointer rounded-xl overflow-hidden shadow-2xl
+        transition-all duration-150 card-3d
+        ${small ? "w-10 h-14" : "w-[72px] h-[104px]"}
+        ${selected ? "card-3d-selected ring-2 ring-white ring-offset-1" : ""}
+        ${dimmed ? "opacity-40 pointer-events-none" : ""}
+      `}
+      style={{ ...gradStyle, border:'2px solid rgba(255,255,255,0.35)' }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-1 py-0.5" style={{ background:'rgba(0,0,0,0.4)', minHeight: small?14:18 }}>
+        <span className="font-black text-white leading-none" style={{ fontSize:small?5:7 }}>WILD</span>
+        {!small && <span className="text-white/80 font-bold" style={{ fontSize:7 }}>${card.value}M</span>}
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 flex flex-col items-center justify-center px-1 gap-0.5">
+        {!small && <div className="text-white font-black text-center" style={{ fontSize:9, textShadow:'0 0 8px rgba(0,0,0,0.8)' }}>★ WILD ★</div>}
+
+        {/* Color dots */}
+        <div className="flex flex-wrap gap-0.5 justify-center">
+          {cols.slice(0, isAny ? 8 : undefined).map((c) => (
+            <span key={c} className="rounded-full border border-white/40 shadow"
+              style={{ width:small?4:7, height:small?4:7, background:COLOR_THEME[c]?.dot ?? '#888' }} />
+          ))}
+          {isAny && <span className="rounded-full border border-white/40" style={{ width:7, height:7, background:'#ccc' }} />}
+        </div>
+
+        {!small && (
+          <div className="text-white/80 text-center leading-tight" style={{ fontSize:6.5 }}>
+            {isAny ? "ANY COLOR" : cols.map(c => COLOR_THEME[c]?.label?.split(' ')[0]).join('/')}
+          </div>
+        )}
+      </div>
+
+      {!small && (
+        <div className="text-center py-0.5" style={{ background:'rgba(0,0,0,0.35)' }}>
+          <span className="text-white/60 font-bold uppercase tracking-widest" style={{ fontSize:5 }}>WILD PROP</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Money / Cash card ─────────────────────────────────────────────────────────
+function MoneyCard({ card, small, selected, dimmed, onClick }) {
+  const theme = MONEY_COLORS[card.value] ?? MONEY_COLORS[1];
+
+  return (
+    <div
+      onClick={onClick}
+      className={`flex flex-col flex-shrink-0 select-none cursor-pointer rounded-xl overflow-hidden shadow-2xl
+        transition-all duration-150 card-3d relative
+        ${small ? "w-10 h-14" : "w-[72px] h-[104px]"}
+        ${selected ? "card-3d-selected ring-2 ring-yellow-300 ring-offset-1" : ""}
+        ${dimmed ? "opacity-40 pointer-events-none" : ""}
+      `}
+      style={{ background: `linear-gradient(160deg, ${theme.light} 0%, ${theme.bg} 50%, ${theme.dark} 100%)`,
+               border:`2px solid ${theme.dark}` }}
+    >
+      {/* Ornate border overlay */}
+      {!small && (
+        <div className="absolute inset-1 rounded-lg pointer-events-none" style={{ border:`1px dashed ${theme.dark}55` }} />
+      )}
+
+      {/* Top strip */}
+      <div className="flex items-center justify-center py-0.5 px-1" style={{ background:theme.dark, minHeight:small?14:16 }}>
+        {small ? (
+          <span className="font-black text-white" style={{ fontSize:6 }}>${card.value}M</span>
+        ) : (
+          <span className="font-bold text-white/80 uppercase tracking-widest" style={{ fontSize:5.5 }}>PROPERTY RUSH BANK</span>
+        )}
+      </div>
+
+      {/* Main body */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-0.5 py-1">
+        {/* Big denomination */}
+        <div className="font-black text-center leading-none" style={{ fontSize:small?11:22, color:theme.dark, textShadow:`0 2px 4px rgba(0,0,0,0.18)` }}>
+          ${card.value}<span style={{ fontSize:small?7:12 }}>M</span>
+        </div>
+        {!small && (
+          <div className="font-bold text-center" style={{ fontSize:7, color:theme.dark+'cc' }}>
+            MILLION
+          </div>
+        )}
+
+        {/* Mini dollar signs decoration */}
+        {!small && (
+          <div className="flex gap-1 opacity-40" style={{ fontSize:7, color:theme.dark }}>
+            <span>$</span><span>$</span><span>$</span>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom strip */}
+      <div className="flex items-center justify-between px-1" style={{ background:theme.dark, minHeight:small?8:14 }}>
+        {!small && <>
+          <span className="font-black text-white" style={{ fontSize:8 }}>${card.value}M</span>
+          <span className="text-white/60 font-bold uppercase tracking-widest" style={{ fontSize:5 }}>CASH</span>
+          <span className="font-black text-white" style={{ fontSize:8 }}>${card.value}M</span>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+// ── Action card ───────────────────────────────────────────────────────────────
+function ActionCard({ card, small, selected, dimmed, onClick }) {
+  const icon = ACTION_ICONS[card.action] ?? "⚡";
+
+  // Color by action type
+  const actionThemes = {
+    passgo:       { grad:"from-sky-600 to-blue-800",     band:"#0a4a8a" },
+    debtcollector:{ grad:"from-amber-600 to-orange-800", band:"#8a4a00" },
+    birthday:     { grad:"from-pink-500 to-rose-700",    band:"#8a1840" },
+    slydeal:      { grad:"from-orange-500 to-red-700",   band:"#8a2200" },
+    dealbreaker:  { grad:"from-red-600 to-rose-900",     band:"#7a0808" },
+    doublerent:   { grad:"from-green-600 to-teal-800",   band:"#064a30" },
+    justsayno:    { grad:"from-slate-500 to-gray-800",   band:"#282830" },
+    identityswap: { grad:"from-violet-600 to-purple-900",band:"#3a0a6a" },
+    taxtherich:   { grad:"from-amber-700 to-yellow-900", band:"#6a4a00" },
+    timewarp:     { grad:"from-cyan-600 to-indigo-800",  band:"#0a286a" },
+    chaoscard:    { grad:"from-fuchsia-600 to-purple-800",band:"#5a0a7a" },
+    forceddeal:   { grad:"from-rose-600 to-red-800",     band:"#7a0a1a" },
+    wreckingball: { grad:"from-orange-700 to-red-900",   band:"#6a1a00" },
+    propertytax:  { grad:"from-teal-600 to-cyan-800",    band:"#065a60" },
+    secondchance: { grad:"from-emerald-600 to-green-800",band:"#0a4a20" },
+    rent:         { grad:"from-violet-600 to-purple-800",band:"#3a0a6a" },
+  };
+  const theme = actionThemes[card.action] ?? { grad:"from-sky-600 to-indigo-800", band:"#0a2878" };
+
+  return (
+    <div
+      onClick={onClick}
+      className={`flex flex-col flex-shrink-0 select-none cursor-pointer rounded-xl overflow-hidden shadow-2xl
+        transition-all duration-150 card-3d bg-gradient-to-br ${theme.grad}
+        ${small ? "w-10 h-14" : "w-[72px] h-[104px]"}
+        ${selected ? "card-3d-selected ring-2 ring-white ring-offset-1" : ""}
+        ${dimmed ? "opacity-40 pointer-events-none" : ""}
+      `}
+      style={{ border:`2px solid ${theme.band}` }}
+    >
+      {/* Top strip */}
+      <div className="flex items-center justify-between px-1" style={{ background:'rgba(0,0,0,0.35)', minHeight: small?14:16 }}>
+        <span className="text-white/80 font-bold uppercase tracking-wider truncate" style={{ fontSize: small?5:6.5 }}>
+          {small ? '' : card.type === 'rent' ? 'RENT' : 'ACTION'}
+        </span>
+        {!small && <span className="text-white/70 font-bold" style={{ fontSize:7 }}>${card.value}M</span>}
+      </div>
+
+      {/* Icon */}
+      <div className="flex items-center justify-center" style={{ minHeight: small?16:28 }}>
+        <span style={{ fontSize: small?14:22, lineHeight:1 }}>{icon}</span>
+      </div>
+
+      {/* Name + desc */}
+      <div className="flex-1 flex flex-col items-center justify-center px-1 gap-0.5">
+        <div className="text-white font-black text-center leading-tight" style={{ fontSize:small?5:8, textShadow:'0 1px 3px rgba(0,0,0,0.6)' }}>
+          {card.name}
+        </div>
+        {!small && card.desc && (
+          <div className="text-white/75 text-center leading-tight" style={{ fontSize:6 }}>
+            {card.desc}
+          </div>
+        )}
+      </div>
+
+      {/* Rent: color dots */}
+      {card.type === 'rent' && !small && (
+        <div className="flex gap-1 justify-center pb-1">
+          {(card.colors ? card.colors : Object.keys(COLOR_THEME).slice(0,5)).map((c) => (
+            <span key={c} className="rounded-full border border-white/40 shadow"
+              style={{ width:8, height:8, background:COLOR_THEME[c]?.dot ?? '#888', display:'inline-block' }} />
+          ))}
+          {!card.colors && <span className="text-yellow-300 font-black" style={{ fontSize:7 }}>★ALL</span>}
+        </div>
+      )}
+
+      {/* Bottom */}
+      {!small && (
+        <div className="text-center py-0.5" style={{ background:'rgba(0,0,0,0.3)' }}>
+          <span className="text-white/55 uppercase tracking-widest font-bold" style={{ fontSize:5 }}>
+            {card.type === 'rent' ? 'RENT' : 'ACTION'}
           </span>
         </div>
       )}
     </div>
   );
+}
+
+// ── Hidden (face-down) card ────────────────────────────────────────────────────
+function HiddenCard({ small }) {
+  return (
+    <div className={`flex-shrink-0 rounded-xl overflow-hidden shadow-lg
+      ${small ? "w-10 h-14" : "w-[72px] h-[104px]"}
+    `}
+      style={{
+        background:'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+        border:'2px solid #2a2a4a',
+      }}
+    >
+      {/* Card back pattern */}
+      <div className="w-full h-full flex items-center justify-center relative overflow-hidden">
+        {/* Diamond grid pattern */}
+        <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 72 100">
+          {[0,1,2,3,4,5].map(row => [0,1,2].map(col => (
+            <rect key={`${row}-${col}`}
+              x={col*24+12} y={row*16+8} width={10} height={10}
+              transform={`rotate(45 ${col*24+17} ${row*16+13})`}
+              fill="none" stroke="#c9a227" strokeWidth="0.8" />
+          )))}
+        </svg>
+        <div style={{ fontSize:small?14:22 }} className="select-none relative z-10">🃏</div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main export ───────────────────────────────────────────────────────────────
+export default function Card({ card, onClick, selected, small, dimmed }) {
+  if (!card) return null;
+
+  const props = { card, onClick, selected, small, dimmed };
+
+  if (card.type === 'hidden') return <HiddenCard small={small} />;
+
+  if (card.type === 'money') return <MoneyCard {...props} />;
+
+  if (card.type === 'property') return <PropertyCard {...props} />;
+
+  // Placed wild shows as property color
+  if (card.type === 'wildproperty' && card.color) {
+    return <PropertyCard {...props} />;
+  }
+
+  if (card.type === 'wildproperty') return <WildPropertyCard {...props} />;
+
+  // action / rent
+  return <ActionCard {...props} />;
 }
