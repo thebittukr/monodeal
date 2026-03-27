@@ -7,53 +7,35 @@ import AvatarPicker from "@/components/AvatarPicker";
 import { DEFAULT_AVATAR_ID } from "@/lib/avatars";
 import dynamic from "next/dynamic";
 
-// Load intro overlay only client-side (needs WebGL)
 const IntroOverlay = dynamic(() => import("@/components/IntroOverlay"), { ssr: false });
-
-const COLOR_PILLS = [
-  { color: "#ef4444" }, { color: "#3b82f6" }, { color: "#22c55e" },
-  { color: "#eab308" }, { color: "#a855f7" }, { color: "#f97316" },
-];
 
 export default function HomePage() {
   const router = useRouter();
-  const [tab,        setTab]        = useState("create");
-  const [name,       setName]       = useState("");
-  const [roomId,     setRoomId]     = useState("");
+  const [tab, setTab] = useState("create");
+  const [name, setName] = useState("");
+  const [roomId, setRoomId] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(4);
-  const [loading,    setLoading]    = useState(false);
-  const [err,        setErr]        = useState("");
-  const [activeGame, setActiveGame] = useState(null); // { roomId, playerId, phase }
-  const [city,       setCity]       = useState("lasvegas");
-  const [avatarId,   setAvatarId]   = useState(DEFAULT_AVATAR_ID);
-  // pendingRoom: set after API succeeds, triggers intro overlay before navigating
-  const [pendingRoom, setPendingRoom] = useState(null); // { roomId, playerId }
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const [activeGame, setActiveGame] = useState(null);
+  const [city, setCity] = useState("lasvegas");
+  const [avatarId, setAvatarId] = useState(DEFAULT_AVATAR_ID);
+  const [pendingRoom, setPendingRoom] = useState(null);
+  const [showCities, setShowCities] = useState(false);
 
-  // ── Check localStorage for an active game to rejoin ─────────────────────
   useEffect(() => {
     const entries = Object.entries(localStorage)
       .filter(([k]) => k.startsWith("pr_") && k.endsWith("_pid"));
-
     if (entries.length === 0) return;
-
-    // Check the most recent stored room (could be multiple; check all briefly)
     (async () => {
       for (const [key, playerId] of entries) {
-        const roomId = key.slice(3, -4); // pr_ROOMID_pid
+        const rid = key.slice(3, -4);
         try {
-          const res = await fetch(`/api/game?roomId=${roomId}&playerId=${playerId}`, { cache: "no-store" });
-          if (!res.ok) {
-            // Room gone — clean up stale key
-            localStorage.removeItem(key);
-            continue;
-          }
+          const res = await fetch(`/api/game?roomId=${rid}&playerId=${playerId}`, { cache: "no-store" });
+          if (!res.ok) { localStorage.removeItem(key); continue; }
           const data = await res.json();
-          if (data.phase === "ended") {
-            localStorage.removeItem(key);
-            continue;
-          }
-          // Found a live game
-          setActiveGame({ roomId, playerId, phase: data.phase });
+          if (data.phase === "ended") { localStorage.removeItem(key); continue; }
+          setActiveGame({ roomId: rid, playerId, phase: data.phase });
           return;
         } catch { /* ignore */ }
       }
@@ -64,7 +46,6 @@ export default function HomePage() {
     })();
   }, []);
 
-  // Called when intro overlay finishes — navigate to the room
   const handleIntroDone = useCallback(() => {
     if (!pendingRoom) return;
     router.push(`/room/${pendingRoom.roomId}`);
@@ -75,9 +56,8 @@ export default function HomePage() {
     setErr(""); setLoading(true);
     localStorage.setItem("pr_avatar", avatarId.toString());
     try {
-      const res  = await fetch("/api/game", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch("/api/game", {
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "createRoom", playerName: name.trim(), maxPlayers, avatarId }),
       });
       const data = await res.json();
@@ -95,8 +75,7 @@ export default function HomePage() {
     localStorage.setItem("pr_avatar", avatarId.toString());
     try {
       const res = await fetch("/api/game", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "createSoloRoom", playerName: name.trim(), avatarId }),
       });
       const data = await res.json();
@@ -109,15 +88,14 @@ export default function HomePage() {
   }
 
   async function handleJoin() {
-    if (!name.trim())   { setErr("Enter your name first"); return; }
+    if (!name.trim()) { setErr("Enter your name first"); return; }
     if (!roomId.trim()) { setErr("Enter a room code"); return; }
     setErr(""); setLoading(true);
     localStorage.setItem("pr_avatar", avatarId.toString());
     const code = roomId.trim().toUpperCase();
     try {
-      const res  = await fetch("/api/game", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch("/api/game", {
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "joinRoom", roomId: code, playerName: name.trim(), avatarId }),
       });
       const data = await res.json();
@@ -129,186 +107,256 @@ export default function HomePage() {
     } catch (e) { setErr(e.message); setLoading(false); }
   }
 
+  const currentCity = CITY_CONFIGS[city] || CITY_CONFIGS.lasvegas;
+
   return (
     <div className="min-h-full flex flex-col relative">
-      {/* Intro overlay — shown after create/join until girl finishes her line */}
       {pendingRoom && <IntroOverlay onDone={handleIntroDone} />}
-
       <CasinoBackground city={city} />
-      <div className="relative z-10 flex flex-col min-h-full">
-      <div className="flex flex-col items-center pt-5 sm:pt-12 pb-3 sm:pb-6 px-4 text-center">
-        <div className="hidden sm:flex gap-2 mb-6">
-          {COLOR_PILLS.map((p, i) => (
-            <div key={i} className="w-3 h-3 rounded-full opacity-80" style={{ backgroundColor: p.color }} />
-          ))}
-        </div>
-        <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white leading-none">
-          Property<span className="text-indigo-400">Rush</span>
-        </h1>
-        <p className="hidden sm:block text-slate-400 text-base mt-3 max-w-xs">
-          The fast property trading card game.<br />
-          Collect 3 sets before your opponents do.
-        </p>
-        <div className="hidden sm:flex flex-wrap gap-2 mt-5 justify-center">
-          {["2–4 Players", "~15 min", "Strategy + Luck", "No signup"].map((f) => (
-            <span key={f} className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 text-xs font-medium">{f}</span>
-          ))}
-        </div>
-      </div>
 
-      <div className="flex-1 flex flex-col items-center px-4 pb-8">
-        {/* City background selector — desktop only */}
-        <div className="hidden sm:block w-full max-w-sm mb-4">
-          <div className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 text-center">🌆 Casino Scene</div>
-          <div className="grid grid-cols-3 gap-1.5">
-            {Object.entries(CITY_CONFIGS).map(([key, cfg]) => (
-              <button
-                key={key}
-                onClick={() => { setCity(key); localStorage.setItem("pr_city", key); }}
-                className={`px-2 py-1.5 rounded-xl text-xs font-medium transition-all border ${
-                  city === key
-                    ? "bg-indigo-600/80 border-indigo-400/60 text-white"
-                    : "bg-slate-800/60 border-white/10 text-slate-400 hover:text-white hover:border-white/20"
-                }`}
-              >
-                {cfg.label}
-              </button>
+      {/* ── Top Nav ─────────────────────────────────────────────────────── */}
+      <nav className="relative z-20 flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/5">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-sm font-black">P</div>
+          <span className="text-white font-bold text-lg hidden sm:block">Property<span className="text-violet-400">Rush</span></span>
+        </div>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <NavLink href="/cards">Cards</NavLink>
+          <NavLink href="/leaderboard">Ranks</NavLink>
+          <NavLink href="/partners">Dates</NavLink>
+          <NavLink href="/fairness">Fair Play</NavLink>
+          <a href="/login" className="ml-2 px-4 py-1.5 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition">
+            Sign In
+          </a>
+        </div>
+      </nav>
+
+      <div className="relative z-10 flex-1 flex flex-col">
+        {/* ── Hero ───────────────────────────────────────────────────────── */}
+        <div className="flex flex-col items-center pt-6 sm:pt-10 pb-4 px-4 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-4">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs text-slate-400 font-medium">
+              {currentCity.label} Table
+            </span>
+          </div>
+          <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-none">
+            Property<span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">Rush</span>
+          </h1>
+          <p className="text-slate-400 text-sm sm:text-base mt-3 max-w-sm">
+            The fast property card game. Collect 3 sets to win.
+          </p>
+
+          {/* Feature pills */}
+          <div className="flex flex-wrap gap-2 mt-4 justify-center">
+            {[
+              { icon: "👥", text: "2-4 Players" },
+              { icon: "⏱", text: "~15 min" },
+              { icon: "🔒", text: "Provably Fair" },
+              { icon: "💎", text: "Win Credits" },
+            ].map((f) => (
+              <span key={f.text} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/8 text-white/70 text-xs font-medium">
+                <span>{f.icon}</span>{f.text}
+              </span>
             ))}
           </div>
         </div>
 
-        {/* Rejoin banner */}
-        {activeGame && (
-          <div className="w-full max-w-sm mb-4 bg-emerald-900/50 border border-emerald-500/40 rounded-2xl px-5 py-4 flex items-center gap-3">
-            <div className="flex-1">
-              <div className="text-emerald-300 font-bold text-sm">Active game found</div>
-              <div className="text-emerald-400/70 text-xs font-mono mt-0.5">Room: {activeGame.roomId} · {activeGame.phase}</div>
-            </div>
-            <button
-              onClick={() => {
-                sessionStorage.setItem(`pr_${activeGame.roomId}_pid`, activeGame.playerId);
-                router.push(`/room/${activeGame.roomId}`);
-              }}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors"
-            >
-              Rejoin →
-            </button>
-          </div>
-        )}
-        <div className="w-full max-w-sm bg-slate-900/85 backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl p-4 sm:p-6">
-          <div className="flex rounded-2xl bg-slate-900/60 p-1 mb-6 gap-1">
-            <TabBtn active={tab === "create"} onClick={() => { setTab("create"); setErr(""); }}>Create Room</TabBtn>
-            <TabBtn active={tab === "join"}   onClick={() => { setTab("join");   setErr(""); }}>Join Room</TabBtn>
-          </div>
+        {/* ── Main Content: two columns on desktop ──────────────────────── */}
+        <div className="flex-1 flex flex-col lg:flex-row items-start justify-center gap-6 px-4 sm:px-8 pb-8 max-w-5xl mx-auto w-full">
 
-          <label className="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1.5">Your Name</label>
-          <input
-            type="text" value={name} onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && (tab === "create" ? handleCreate() : handleJoin())}
-            placeholder="e.g. Alex" maxLength={20}
-            className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-all mb-4"
-          />
+          {/* Left: Quick Play Actions */}
+          <div className="w-full lg:w-96 space-y-4">
+            {/* Rejoin banner */}
+            {activeGame && (
+              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl px-5 py-4 flex items-center gap-3 animate-pulse">
+                <div className="flex-1">
+                  <div className="text-emerald-300 font-bold text-sm">Game in progress</div>
+                  <div className="text-emerald-400/60 text-xs font-mono mt-0.5">Room: {activeGame.roomId}</div>
+                </div>
+                <button
+                  onClick={() => {
+                    sessionStorage.setItem(`pr_${activeGame.roomId}_pid`, activeGame.playerId);
+                    router.push(`/room/${activeGame.roomId}`);
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition"
+                >
+                  Rejoin
+                </button>
+              </div>
+            )}
 
-          {/* Avatar picker */}
-          <div className="mb-4">
-            <label className="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1.5">Your Avatar</label>
-            <AvatarPicker
-              selected={avatarId}
-              onSelect={(id) => { setAvatarId(id); localStorage.setItem("pr_avatar", id.toString()); }}
-            />
-          </div>
+            {/* Game Form Card */}
+            <div className="bg-slate-900/80 backdrop-blur-xl border border-white/8 rounded-2xl p-5 shadow-2xl">
+              {/* Tab Switch */}
+              <div className="flex rounded-xl bg-black/30 p-1 mb-5">
+                <TabBtn active={tab === "create"} onClick={() => { setTab("create"); setErr(""); }}>Create Room</TabBtn>
+                <TabBtn active={tab === "join"} onClick={() => { setTab("join"); setErr(""); }}>Join Room</TabBtn>
+              </div>
 
-          {tab === "create" && (
-            <>
-              <label className="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1.5">Number of Players</label>
-              <div className="flex gap-2 mb-4">
-                {[2, 3, 4].map((n) => (
+              {/* Name Input */}
+              <label className="block text-slate-500 text-[11px] font-bold uppercase tracking-widest mb-1.5">Player Name</label>
+              <input
+                type="text" value={name} onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (tab === "create" ? handleCreate() : handleJoin())}
+                placeholder="Enter your name" maxLength={20}
+                className="w-full bg-black/30 border border-white/8 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all mb-4"
+              />
+
+              {/* Avatar */}
+              <div className="mb-4">
+                <label className="block text-slate-500 text-[11px] font-bold uppercase tracking-widest mb-1.5">Avatar</label>
+                <AvatarPicker
+                  selected={avatarId}
+                  onSelect={(id) => { setAvatarId(id); localStorage.setItem("pr_avatar", id.toString()); }}
+                />
+              </div>
+
+              {tab === "create" && (
+                <>
+                  <label className="block text-slate-500 text-[11px] font-bold uppercase tracking-widest mb-1.5">Players</label>
+                  <div className="flex gap-2 mb-4">
+                    {[2, 3, 4].map((n) => (
+                      <button
+                        key={n} onClick={() => setMaxPlayers(n)}
+                        className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all border ${
+                          maxPlayers === n
+                            ? "bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-500/20"
+                            : "bg-black/20 border-white/8 text-slate-500 hover:text-white hover:border-white/15"
+                        }`}
+                      >
+                        {n}P
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* City Selector (collapsed) */}
                   <button
-                    key={n}
-                    onClick={() => setMaxPlayers(n)}
-                    className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all border ${
-                      maxPlayers === n
-                        ? "bg-indigo-600 border-indigo-500 text-white"
-                        : "bg-slate-900/60 border-white/10 text-slate-400 hover:text-white hover:border-white/20"
-                    }`}
+                    onClick={() => setShowCities(!showCities)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-black/20 border border-white/5 text-slate-400 text-xs mb-4 hover:border-white/10 transition"
                   >
-                    {n} Players
+                    <span>Table: {currentCity.label}</span>
+                    <span className="text-[10px]">{showCities ? "▲" : "▼"}</span>
                   </button>
+                  {showCities && (
+                    <div className="grid grid-cols-3 gap-1 mb-4">
+                      {Object.entries(CITY_CONFIGS).map(([key, cfg]) => (
+                        <button
+                          key={key}
+                          onClick={() => { setCity(key); localStorage.setItem("pr_city", key); setShowCities(false); }}
+                          className={`px-2 py-1.5 rounded-lg text-[11px] font-medium transition border ${
+                            city === key
+                              ? "bg-violet-600/60 border-violet-400/50 text-white"
+                              : "bg-black/20 border-white/5 text-slate-500 hover:text-white"
+                          }`}
+                        >
+                          {cfg.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {tab === "join" && (
+                <>
+                  <label className="block text-slate-500 text-[11px] font-bold uppercase tracking-widest mb-1.5">Room Code</label>
+                  <input
+                    type="text" value={roomId} onChange={(e) => setRoomId(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === "Enter" && handleJoin()}
+                    placeholder="ABC123" maxLength={6}
+                    className="w-full bg-black/30 border border-white/8 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm font-mono uppercase tracking-widest focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all mb-4"
+                  />
+                </>
+              )}
+
+              {err && (
+                <div className="mb-4 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">{err}</div>
+              )}
+
+              <button
+                onClick={tab === "create" ? handleCreate : handleJoin}
+                disabled={loading}
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:from-slate-700 disabled:to-slate-700 text-white font-bold text-sm transition-all shadow-lg shadow-violet-500/15"
+              >
+                {loading ? "Loading..." : tab === "create" ? "Create Room" : "Join Game"}
+              </button>
+
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5" /></div>
+                <div className="relative flex justify-center"><span className="px-3 bg-slate-900/80 text-slate-600 text-[10px] uppercase tracking-widest">or play instantly</span></div>
+              </div>
+
+              <button
+                onClick={handleSolo}
+                disabled={loading}
+                className="w-full py-3 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold text-sm transition-all"
+              >
+                Play Solo vs 3 Bots
+              </button>
+            </div>
+          </div>
+
+          {/* Right: Info Cards (desktop) */}
+          <div className="hidden lg:flex flex-col gap-4 w-80">
+            {/* How to Play */}
+            <div className="bg-slate-900/60 backdrop-blur-md border border-white/5 rounded-2xl p-5">
+              <h3 className="text-white font-bold text-sm mb-3">How to Play</h3>
+              <div className="space-y-3">
+                {[
+                  { step: "1", title: "Draw cards", desc: "Draw 2 cards at the start of your turn" },
+                  { step: "2", title: "Play cards", desc: "Play up to 3 cards — properties, money, or actions" },
+                  { step: "3", title: "Collect sets", desc: "First to complete 3 full property sets wins!" },
+                ].map((s) => (
+                  <div key={s.step} className="flex gap-3">
+                    <div className="w-6 h-6 rounded-full bg-violet-600/30 border border-violet-500/30 flex items-center justify-center text-[10px] font-bold text-violet-300 shrink-0">{s.step}</div>
+                    <div>
+                      <div className="text-white text-xs font-semibold">{s.title}</div>
+                      <div className="text-slate-500 text-[11px] leading-relaxed">{s.desc}</div>
+                    </div>
+                  </div>
                 ))}
               </div>
-            </>
-          )}
+            </div>
 
-          {tab === "join" && (
-            <>
-              <label className="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1.5">Room Code</label>
-              <input
-                type="text" value={roomId} onChange={(e) => setRoomId(e.target.value.toUpperCase())}
-                onKeyDown={(e) => e.key === "Enter" && handleJoin()}
-                placeholder="e.g. ABC123" maxLength={6}
-                className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm font-mono uppercase tracking-widest focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-all mb-4"
-              />
-            </>
-          )}
-
-          {err && (
-            <div className="mb-4 px-4 py-2 rounded-xl bg-red-900/50 border border-red-500/30 text-red-300 text-sm">⚠ {err}</div>
-          )}
-
-          <button
-            onClick={tab === "create" ? handleCreate : handleJoin}
-            disabled={loading}
-            className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold text-base transition-all duration-150 shadow-lg shadow-indigo-500/20"
-          >
-            {loading ? "Loading…" : tab === "create" ? "Create Room +" : "Join Game →"}
-          </button>
-          <button
-            onClick={handleSolo}
-            disabled={loading}
-            className="w-full py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold text-sm transition-all duration-150 shadow-lg mt-2"
-          >
-            {loading ? "Loading…" : "⚡ Play Solo vs 3 Bots"}
-          </button>
-        </div>
-
-        {/* Card Gallery link — desktop only */}
-        <div className="hidden sm:block w-full max-w-sm mt-4">
-          <a href="/cards" className="flex items-center justify-between w-full px-4 py-3 rounded-2xl bg-gradient-to-r from-violet-900/60 to-indigo-900/60 border border-violet-500/25 hover:border-violet-400/40 transition-all group">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🃏</span>
-              <div>
-                <div className="text-white font-bold text-sm group-hover:text-violet-300 transition-colors">Card Gallery</div>
-                <div className="text-white/40 text-xs">View all 110 cards & their effects</div>
+            {/* Quick Links */}
+            <a href="/cards" className="flex items-center gap-3 bg-slate-900/60 backdrop-blur-md border border-white/5 rounded-2xl p-4 hover:border-violet-500/20 transition group">
+              <div className="w-10 h-10 rounded-xl bg-violet-600/20 flex items-center justify-center text-lg">🃏</div>
+              <div className="flex-1">
+                <div className="text-white text-sm font-semibold group-hover:text-violet-300 transition">Card Gallery</div>
+                <div className="text-slate-500 text-[11px]">View all 110 cards & effects</div>
               </div>
-            </div>
-            <span className="text-white/40 group-hover:text-white transition-colors">→</span>
-          </a>
-        </div>
+              <span className="text-slate-600 group-hover:text-white transition">→</span>
+            </a>
 
-        {/* How to Play — desktop only */}
-        <div className="hidden sm:block w-full max-w-sm mt-3">
-          <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-4">
-            <h3 className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">How to Play</h3>
-            <div className="space-y-2">
-              {[
-                ["🃏", "Draw 2 cards at the start of your turn"],
-                ["🏠", "Play up to 3 cards — properties, money, or actions"],
-                ["🏆", "First to complete 3 full property sets wins!"],
-                ["🚫", "Play Just Say No to cancel any action against you"],
-              ].map(([icon, text], i) => (
-                <div key={i} className="flex items-start gap-2.5">
-                  <span className="text-base flex-shrink-0">{icon}</span>
-                  <span className="text-slate-400 text-xs leading-relaxed">{text}</span>
-                </div>
-              ))}
-            </div>
+            <a href="/credits" className="flex items-center gap-3 bg-slate-900/60 backdrop-blur-md border border-white/5 rounded-2xl p-4 hover:border-emerald-500/20 transition group">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600/20 flex items-center justify-center text-lg">💰</div>
+              <div className="flex-1">
+                <div className="text-white text-sm font-semibold group-hover:text-emerald-300 transition">Credits & Wallet</div>
+                <div className="text-slate-500 text-[11px]">Deposit, withdraw, manage funds</div>
+              </div>
+              <span className="text-slate-600 group-hover:text-white transition">→</span>
+            </a>
+
+            <a href="/leaderboard" className="flex items-center gap-3 bg-slate-900/60 backdrop-blur-md border border-white/5 rounded-2xl p-4 hover:border-amber-500/20 transition group">
+              <div className="w-10 h-10 rounded-xl bg-amber-600/20 flex items-center justify-center text-lg">🏆</div>
+              <div className="flex-1">
+                <div className="text-white text-sm font-semibold group-hover:text-amber-300 transition">Leaderboard</div>
+                <div className="text-slate-500 text-[11px]">Top players & rankings</div>
+              </div>
+              <span className="text-slate-600 group-hover:text-white transition">→</span>
+            </a>
           </div>
         </div>
-      </div>
 
-      <footer className="hidden sm:block text-center py-4 px-4 text-slate-600 text-xs border-t border-white/5">
-        This is a prototype demo. Not affiliated with any brand. No real-money gameplay.
-      </footer>
+        {/* ── Mobile Bottom Nav ────────────────────────────────────────── */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 backdrop-blur-md border-t border-white/5 px-2 py-1.5 flex justify-around">
+          <MobileNavBtn href="/" icon="🏠" label="Home" active />
+          <MobileNavBtn href="/cards" icon="🃏" label="Cards" />
+          <MobileNavBtn href="/credits" icon="💰" label="Credits" />
+          <MobileNavBtn href="/leaderboard" icon="🏆" label="Ranks" />
+          <MobileNavBtn href="/login" icon="👤" label="Sign In" />
+        </div>
       </div>
     </div>
   );
@@ -316,13 +364,29 @@ export default function HomePage() {
 
 function TabBtn({ active, onClick, children }) {
   return (
-    <button
-      onClick={onClick}
-      className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
-        active ? "bg-indigo-600 text-white shadow-sm" : "text-slate-400 hover:text-white"
+    <button onClick={onClick}
+      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+        active ? "bg-violet-600 text-white shadow-sm" : "text-slate-500 hover:text-white"
       }`}
     >
       {children}
     </button>
+  );
+}
+
+function NavLink({ href, children }) {
+  return (
+    <a href={href} className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 text-xs font-medium transition hidden sm:block">
+      {children}
+    </a>
+  );
+}
+
+function MobileNavBtn({ href, icon, label, active }) {
+  return (
+    <a href={href} className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition ${active ? "text-violet-400" : "text-slate-500"}`}>
+      <span className="text-base">{icon}</span>
+      <span className="text-[9px] font-medium">{label}</span>
+    </a>
   );
 }
