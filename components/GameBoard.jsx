@@ -35,7 +35,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
     state.pendingAction.toIdxList.includes(myIdx) &&
     !state.pendingAction.respondedList?.includes(myIdx);
   const mustRespond      = pendingForMe || pendingMultiForMe;
-  const mustPayAssets    = pendingForMe && state.pendingAction?.type === "property-payment";
+  const mustPayAssets    = pendingForMe && state.pendingAction?.type === "pay-choice";
   const mustDiscard      = pendingForMe && state.pendingAction?.type === "discard";
   const isWaiting        = state.pendingAction && !mustRespond;
   const hasJSN      = (me?.hand ?? []).some((c) => c.action === "justsayno");
@@ -118,10 +118,11 @@ export default function GameBoard({ state, myId, onMove, error }) {
       )}
 
       {mustPayAssets && state.pendingAction && (
-        <ActionModal mode="pay-assets"
+        <ActionModal mode="pay-choice"
           pendingAction={{ ...state.pendingAction, attackerName: state.players[state.pendingAction.fromIdx]?.name ?? "Opponent" }}
           myAssets={me?.assets ?? {}}
-          onConfirm={({ response, cards }) => handleRespond(response === "pay-assets" ? { response, cards } : response)}
+          myBank={me?.bank ?? []}
+          onConfirm={({ cashIds, cards }) => handleRespond({ response: "pay-choice", cashIds, cards })}
           onCancel={() => {}} />
       )}
 

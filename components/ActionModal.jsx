@@ -27,6 +27,7 @@ export default function ActionModal({
   mode,
   card,
   myAssets = {},
+  myBank = [],
   myHand = [],
   fromColor = null,   // for flip-wild: the current color of the wild card
   opponentAssets = {},
@@ -121,12 +122,13 @@ export default function ActionModal({
           />
         )}
 
-        {mode === "pay-assets" && pendingAction && (
-          <PayWithAssets
+        {mode === "pay-choice" && pendingAction && (
+          <PayChoice
             pendingAction={pendingAction}
             attackerName={pendingAction.attackerName ?? "Opponent"}
+            myBank={myBank}
             myAssets={myAssets}
-            onConfirm={(cards) => onConfirm({ response: "pay-assets", cards })}
+            onConfirm={({ cashIds, cards }) => onConfirm({ cashIds, cards })}
           />
         )}
 
@@ -429,90 +431,115 @@ function PickForceDeal({ opponentAssets, opponentName, myAssets, myName, onConfi
   );
 }
 
-function PayWithAssets({ pendingAction, attackerName, myAssets, onConfirm }) {
-  const [selected, setSelected] = useState([]); // [{ color, cardId }]
-  const remaining = pendingAction.params?.remaining ?? 0;
+function PayChoice({ pendingAction, attackerName, myBank, myAssets, onConfirm }) {
+  const [selCash,  setSelCash]  = useState([]); // [cardId, ...]
+  const [selProps, setSelProps] = useState([]); // [{ color, cardId }, ...]
+  const amount = pendingAction.params?.amount ?? 0;
 
-  const allCards = Object.entries(myAssets).flatMap(([color, cards]) =>
+  const allCash  = [...myBank].sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+  const allProps = Object.entries(myAssets).flatMap(([color, cards]) =>
     cards.map((c) => ({ ...c, assetColor: color }))
   );
-  const totalAssetValue = allCards.reduce((s, c) => s + (c.value ?? 0), 0);
+  const totalAvailable = [...allCash, ...allProps].reduce((s, c) => s + (c.value ?? 0), 0);
 
-  const selectedValue = selected.reduce((s, sel) => {
-    const card = allCards.find((c) => c.id === sel.cardId);
-    return s + (card?.value ?? 0);
+  const selectedCashValue  = selCash.reduce((s, id) => {
+    const c = allCash.find((c) => c.id === id); return s + (c?.value ?? 0);
   }, 0);
+  const selectedPropsValue = selProps.reduce((s, sel) => {
+    const c = allProps.find((c) => c.id === sel.cardId); return s + (c?.value ?? 0);
+  }, 0);
+  const selectedValue = selectedCashValue + selectedPropsValue;
+  const gaveAll = selCash.length === allCash.length && selProps.length === allProps.length;
+  const canConfirm = selectedValue >= amount || gaveAll;
 
-  const isSelected = (id) => selected.some((s) => s.cardId === id);
-
-  const toggle = (color, cardId) => {
-    setSelected((prev) =>
-      prev.some((s) => s.cardId === cardId)
-        ? prev.filter((s) => s.cardId !== cardId)
-        : [...prev, { color, cardId }]
-    );
-  };
-
-  const canConfirm = selectedValue >= remaining || selected.length === allCards.length;
+  const toggleCash = (id) => setSelCash((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
+  const toggleProp = (color, cardId) => setSelProps((p) =>
+    p.some((s) => s.cardId === cardId) ? p.filter((s) => s.cardId !== cardId) : [...p, { color, cardId }]
+  );
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <div className="text-center">
-        <div className="text-3xl mb-2">💸</div>
-        <h3 className="text-white font-bold text-lg">Pay with Properties</h3>
+        <div className="text-3xl mb-1.5">💸</div>
+        <h3 className="text-white font-bold text-lg">Settle Payment</h3>
         <p className="text-slate-300 text-sm mt-1">
-          You owe <span className="text-red-400 font-bold">${remaining}M</span> more to {attackerName}
-        </p>
-        <p className="text-slate-500 text-xs mt-0.5">
-          Your bank couldn't cover it — select properties to give
+          You owe <span className="text-red-400 font-bold">${amount}M</span> to {attackerName}
         </p>
       </div>
 
-      {/* Running counter */}
+      {/* Running total */}
       <div className={`flex items-center justify-between px-4 py-2 rounded-xl border ${
-        selectedValue >= remaining ? "border-emerald-500/40 bg-emerald-900/20" : "border-white/10 bg-white/5"
+        selectedValue >= amount ? "border-emerald-500/40 bg-emerald-900/20" : "border-white/10 bg-white/5"
       }`}>
-        <span className="text-slate-400 text-sm">Selected value</span>
-        <span className={`font-bold text-lg ${selectedValue >= remaining ? "text-emerald-400" : "text-white"}`}>
-          ${selectedValue}M / ${remaining}M
+        <span className="text-slate-400 text-sm">Selected</span>
+        <span className={`font-bold text-lg ${selectedValue >= amount ? "text-emerald-400" : "text-white"}`}>
+          ${selectedValue}M / ${amount}M
         </span>
       </div>
 
-      {allCards.length === 0 ? (
-        <p className="text-slate-400 text-center text-sm italic">You have no properties — debt forgiven!</p>
-      ) : (
-        <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
-          {allCards.map((c) => (
-            <div
-              key={c.id}
-              onClick={() => toggle(c.assetColor, c.id)}
-              className={`cursor-pointer rounded-xl border-2 p-1.5 transition-all ${
-                isSelected(c.id)
-                  ? "border-emerald-400 bg-emerald-900/30 scale-105"
-                  : "border-white/10 bg-white/5 hover:border-white/30"
-              }`}
-            >
-              <Card card={c} small />
-              <div className="text-center text-white/70 mt-0.5" style={{ fontSize: 9 }}>
-                ${c.value}M
+      {/* Cash cards */}
+      {allCash.length > 0 && (
+        <div>
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1.5">Cash (Bank)</div>
+          <div className="flex flex-wrap gap-1.5">
+            {allCash.map((c) => (
+              <div
+                key={c.id}
+                onClick={() => toggleCash(c.id)}
+                className={`cursor-pointer rounded-xl border-2 p-1 transition-all ${
+                  selCash.includes(c.id)
+                    ? "border-emerald-400 bg-emerald-900/30 scale-105"
+                    : "border-white/10 bg-white/5 hover:border-white/30"
+                }`}
+              >
+                <Card card={c} small />
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
-      {totalAssetValue < remaining && (
+      {/* Property cards */}
+      {allProps.length > 0 && (
+        <div>
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1.5">Properties</div>
+          <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+            {allProps.map((c) => (
+              <div
+                key={c.id}
+                onClick={() => toggleProp(c.assetColor, c.id)}
+                className={`cursor-pointer rounded-xl border-2 p-1 transition-all ${
+                  selProps.some((s) => s.cardId === c.id)
+                    ? "border-emerald-400 bg-emerald-900/30 scale-105"
+                    : "border-white/10 bg-white/5 hover:border-white/30"
+                }`}
+              >
+                <Card card={c} small />
+                <div className="text-center text-white/60 mt-0.5" style={{ fontSize: 8 }}>${c.value}M</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {allCash.length === 0 && allProps.length === 0 && (
+        <p className="text-slate-400 text-center text-sm italic">You have nothing — debt will be forgiven.</p>
+      )}
+
+      {totalAvailable < amount && totalAvailable > 0 && (
         <p className="text-yellow-400 text-xs text-center">
-          You can't cover the full debt — select all your properties to pay what you can.
+          Can't cover full debt — select everything to pay what you can.
         </p>
       )}
 
       <button
-        onClick={() => onConfirm(allCards.length === 0 ? [] : selected)}
-        disabled={!canConfirm && allCards.length > 0}
+        onClick={() => onConfirm({ cashIds: selCash, cards: selProps })}
+        disabled={!canConfirm && (allCash.length > 0 || allProps.length > 0)}
         className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold transition-colors"
       >
-        {allCards.length === 0 ? "OK — Nothing to Give" : `Pay ${selected.length} Card${selected.length !== 1 ? "s" : ""} ($${selectedValue}M)`}
+        {allCash.length === 0 && allProps.length === 0
+          ? "OK — Nothing to Give"
+          : `Pay $${selectedValue}M (${selCash.length + selProps.length} card${selCash.length + selProps.length !== 1 ? "s" : ""})`}
       </button>
     </div>
   );
