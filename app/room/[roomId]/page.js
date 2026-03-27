@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import GameBoard from "@/components/GameBoard";
+import CasinoBackground from "@/components/CasinoBackground";
 
 const POLL_INTERVAL       = 2000;  // 2 s — halves Redis usage, still fast enough
 const MAX_PLAYERS         = 4;
@@ -22,6 +23,7 @@ export default function RoomPage() {
   const [reconnecting, setReconnecting] = useState(false);
   const [prevPhase,    setPrevPhase]    = useState(null);
   const [prevTurnIdx,  setPrevTurnIdx]  = useState(null);
+  const [city,         setCity]         = useState("lasvegas");
 
   const myIdRef          = useRef(null);
   const soundsRef        = useRef(null);
@@ -37,6 +39,8 @@ export default function RoomPage() {
     sessionStorage.setItem(`pr_${roomId}_pid`, pid);
     setMyId(pid);
     myIdRef.current = pid;
+    const savedCity = localStorage.getItem("pr_city");
+    if (savedCity) setCity(savedCity);
   }, [roomId, router]);
 
   // ── Sound ─────────────────────────────────────────────────────────────────
@@ -159,8 +163,10 @@ export default function RoomPage() {
     };
 
     return (
-      <div className="min-h-full felt-bg flex flex-col items-center justify-center px-4">
-        <div className="w-full max-w-sm bg-slate-800/80 backdrop-blur border border-white/10 rounded-3xl shadow-2xl p-8">
+      <div className="min-h-full flex flex-col items-center justify-center px-4 relative">
+        <CasinoBackground city={city} />
+        <div className="relative z-10 w-full flex flex-col items-center justify-center">
+        <div className="w-full max-w-sm bg-slate-900/85 backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl p-8">
           <div className="text-center mb-6">
             <div className="text-4xl mb-3 animate-bounce-sm">⏳</div>
             <h2 className="text-white font-black text-2xl">Waiting for players</h2>
@@ -224,17 +230,31 @@ export default function RoomPage() {
         >
           ← Leave Room
         </button>
+        </div>
       </div>
     );
   }
+
+  // ── City cycle helper ─────────────────────────────────────────────────────
+  const CITY_KEYS = ["lasvegas","tokyo","macau","montecarlo","singapore","atlantic","badenbaden","sanjose","paradise","london","sydney"];
+  const cycleCity = () => {
+    setCity((prev) => {
+      const idx = CITY_KEYS.indexOf(prev);
+      const next = CITY_KEYS[(idx + 1) % CITY_KEYS.length];
+      localStorage.setItem("pr_city", next);
+      return next;
+    });
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   // GAME
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="h-full felt-bg flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden relative">
+      <CasinoBackground city={city} />
+      <div className="relative z-10 h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-slate-900/60 border-b border-white/5 flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-2 bg-black/60 backdrop-blur-md border-b border-white/10 flex-shrink-0">
         <div className="flex items-center gap-1">
           <span className="text-white font-black text-lg">Property</span>
           <span className="text-indigo-400 font-black text-lg">Rush</span>
@@ -247,14 +267,21 @@ export default function RoomPage() {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={cycleCity}
+            className="px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-white/10 text-sm transition-colors"
+            title="Change casino scene"
+          >
+            🌆
+          </button>
+          <button
             onClick={() => setSoundOn((v) => !v)}
-            className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-white/10 text-sm transition-colors"
+            className="px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-white/10 text-sm transition-colors"
           >
             {soundOn ? "🔊" : "🔇"}
           </button>
           <button
             onClick={() => { if (window.confirm("Leave the game? Your progress will be lost.")) router.push("/"); }}
-            className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-red-900/60 border border-white/10 text-slate-500 hover:text-red-400 text-xs transition-colors"
+            className="px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-red-900/60 border border-white/10 text-slate-500 hover:text-red-400 text-xs transition-colors"
           >
             Leave
           </button>
@@ -264,6 +291,7 @@ export default function RoomPage() {
       {/* Board */}
       <div className="flex-1 overflow-hidden">
         <GameBoard state={state} myId={myId} onMove={handleMove} error={moveError} />
+      </div>
       </div>
     </div>
   );

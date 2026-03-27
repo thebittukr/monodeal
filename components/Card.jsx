@@ -71,9 +71,10 @@ export default function Card({ card, onClick, selected, small, dimmed }) {
         flex flex-col shadow-lg flex-shrink-0
         cursor-pointer select-none
         transition-all duration-150 ease-out
+        card-3d
         ${selected
-          ? "ring-2 ring-white ring-offset-1 ring-offset-transparent scale-110 -translate-y-3 shadow-2xl"
-          : "hover:scale-105 hover:-translate-y-1 hover:shadow-xl"
+          ? "card-3d-selected ring-2 ring-white ring-offset-1 ring-offset-transparent"
+          : ""
         }
         ${dimmed ? "opacity-40 pointer-events-none" : ""}
         overflow-hidden relative

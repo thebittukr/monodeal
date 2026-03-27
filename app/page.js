@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import CasinoBackground from "@/components/CasinoBackground";
+import { CITY_CONFIGS } from "@/components/CasinoBackground";
 
 const COLOR_PILLS = [
   { color: "#ef4444" }, { color: "#3b82f6" }, { color: "#22c55e" },
@@ -16,6 +18,7 @@ export default function HomePage() {
   const [loading,    setLoading]    = useState(false);
   const [err,        setErr]        = useState("");
   const [activeGame, setActiveGame] = useState(null); // { roomId, playerId, phase }
+  const [city,       setCity]       = useState("lasvegas");
 
   // ── Check localStorage for an active game to rejoin ─────────────────────
   useEffect(() => {
@@ -45,6 +48,8 @@ export default function HomePage() {
           return;
         } catch { /* ignore */ }
       }
+      const savedCity = localStorage.getItem("pr_city");
+      if (savedCity && CITY_CONFIGS[savedCity]) setCity(savedCity);
     })();
   }, []);
 
@@ -102,7 +107,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-full felt-bg flex flex-col">
+    <div className="min-h-full flex flex-col relative">
+      <CasinoBackground city={city} />
+      <div className="relative z-10 flex flex-col min-h-full">
       <div className="flex flex-col items-center pt-12 pb-6 px-4 text-center">
         <div className="flex gap-2 mb-6">
           {COLOR_PILLS.map((p, i) => (
@@ -124,6 +131,26 @@ export default function HomePage() {
       </div>
 
       <div className="flex-1 flex flex-col items-center px-4 pb-8">
+        {/* City background selector */}
+        <div className="w-full max-w-sm mb-4">
+          <div className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 text-center">🌆 Casino Scene</div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {Object.entries(CITY_CONFIGS).map(([key, cfg]) => (
+              <button
+                key={key}
+                onClick={() => { setCity(key); localStorage.setItem("pr_city", key); }}
+                className={`px-2 py-1.5 rounded-xl text-xs font-medium transition-all border ${
+                  city === key
+                    ? "bg-indigo-600/80 border-indigo-400/60 text-white"
+                    : "bg-slate-800/60 border-white/10 text-slate-400 hover:text-white hover:border-white/20"
+                }`}
+              >
+                {cfg.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Rejoin banner */}
         {activeGame && (
           <div className="w-full max-w-sm mb-4 bg-emerald-900/50 border border-emerald-500/40 rounded-2xl px-5 py-4 flex items-center gap-3">
@@ -142,7 +169,7 @@ export default function HomePage() {
             </button>
           </div>
         )}
-        <div className="w-full max-w-sm bg-slate-800/80 backdrop-blur border border-white/10 rounded-3xl shadow-2xl p-6">
+        <div className="w-full max-w-sm bg-slate-900/85 backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl p-6">
           <div className="flex rounded-2xl bg-slate-900/60 p-1 mb-6 gap-1">
             <TabBtn active={tab === "create"} onClick={() => { setTab("create"); setErr(""); }}>Create Room</TabBtn>
             <TabBtn active={tab === "join"}   onClick={() => { setTab("join");   setErr(""); }}>Join Room</TabBtn>
@@ -232,6 +259,7 @@ export default function HomePage() {
       <footer className="text-center py-4 px-4 text-slate-600 text-xs border-t border-white/5">
         This is a prototype demo. Not affiliated with any brand. No real-money gameplay.
       </footer>
+      </div>
     </div>
   );
 }

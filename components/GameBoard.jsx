@@ -18,6 +18,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
   const [targetPlayer,   setTargetPlayer]   = useState(null);
   const [actionError,    setActionError]    = useState(null);
   const [flipWildCard,   setFlipWildCard]   = useState(null);   // { card, fromColor }
+  const [showFullLog,    setShowFullLog]    = useState(false);
 
 
   if (!state) return <LoadingScreen />;
@@ -204,7 +205,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
       ══════════════════════════════════════════════════════════════════════ */}
 
       {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-2 bg-slate-900/80 border-b border-white/5 flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-2 bg-black/60 backdrop-blur-md border-b border-white/10 flex-shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-2xl">💰</span>
           <div>
@@ -260,7 +261,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
                 return (
                   <div
                     key={opp.id}
-                    className="flex-shrink-0 md:flex-shrink bg-white/5 rounded-2xl p-3 border border-white/5"
+                    className="flex-shrink-0 md:flex-shrink bg-black/40 backdrop-blur-sm rounded-2xl p-3 border border-white/5"
                     style={{ minWidth: 220 }}
                   >
                     {/* Header */}
@@ -291,7 +292,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
 
           {/* MY ASSETS — visible on table for all to see */}
           <div className="flex-1 p-3">
-            <div className="bg-indigo-900/20 rounded-2xl p-3 border border-indigo-500/20 h-full">
+            <div className="bg-indigo-900/30 backdrop-blur-sm rounded-2xl p-3 border border-indigo-500/20 h-full">
               <div className="flex items-center gap-2 mb-2">
                 <div className={`w-7 h-7 rounded-full flex-shrink-0 ${AVATAR_COLORS[myIdx % AVATAR_COLORS.length]} flex items-center justify-center text-white font-black text-sm ${isMyTurn ? "ring-2 ring-emerald-400 turn-pulse" : ""}`}>
                   {me?.name?.[0]?.toUpperCase()}
@@ -312,18 +313,37 @@ export default function GameBoard({ state, myId, onMove, error }) {
         <div className="flex flex-col min-h-0 md:row-span-2">
 
           {/* Game Log */}
-          <div className="flex-1 overflow-y-auto px-3 py-2 min-h-0 border-b border-white/5">
-            <div className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">Game Log</div>
-            {[...(state.log ?? [])].reverse().map((entry, i) => (
-              <div key={i} className={`text-xs leading-relaxed ${i === 0 ? "text-white/80" : "text-slate-600"}`}>
-                {i === 0 && <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 mb-0.5" />}
-                {entry}
-              </div>
-            ))}
+          <div className="flex-shrink-0 md:flex-1 md:overflow-y-auto px-3 py-2 border-b border-white/5">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="text-slate-500 text-xs font-bold uppercase tracking-widest">Log</div>
+              {(state.log?.length ?? 0) > 3 && (
+                <button onClick={() => setShowFullLog(v => !v)} className="text-slate-600 hover:text-slate-400 text-xs transition-colors md:hidden">
+                  {showFullLog ? "▲ less" : `▼ ${(state.log?.length ?? 0) - 3} more`}
+                </button>
+              )}
+            </div>
+            {/* Mobile: last 3 (expandable) */}
+            <div className="md:hidden">
+              {[...(state.log ?? [])].reverse().slice(0, showFullLog ? undefined : 3).map((entry, i) => (
+                <div key={i} className={`text-xs leading-relaxed ${i === 0 ? "text-white/80" : "text-slate-600"}`}>
+                  {i === 0 && <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 mb-0.5" />}
+                  {entry}
+                </div>
+              ))}
+            </div>
+            {/* Desktop: all logs */}
+            <div className="hidden md:block">
+              {[...(state.log ?? [])].reverse().map((entry, i) => (
+                <div key={i} className={`text-xs leading-relaxed ${i === 0 ? "text-white/80" : "text-slate-600"}`}>
+                  {i === 0 && <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 mb-0.5" />}
+                  {entry}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* MY HAND ZONE */}
-          <div className="bg-slate-900/60 flex-shrink-0">
+          <div className="bg-slate-900/75 backdrop-blur-sm flex-shrink-0">
             {/* Errors */}
             {(error || actionError) && (
               <div className="mx-3 mt-2 px-3 py-1.5 rounded-xl bg-red-900/60 border border-red-500/30 text-red-300 text-xs">
