@@ -32,8 +32,10 @@ export default function GameBoard({ state, myId, onMove, error }) {
     Array.isArray(state.pendingAction.toIdxList) &&
     state.pendingAction.toIdxList.includes(myIdx) &&
     !state.pendingAction.respondedList?.includes(myIdx);
-  const mustRespond = pendingForMe || pendingMultiForMe;
-  const isWaiting   = state.pendingAction && !mustRespond;
+  const mustRespond      = pendingForMe || pendingMultiForMe;
+  const mustPayAssets    = pendingForMe && state.pendingAction?.type === "property-payment";
+  const mustDiscard      = pendingForMe && state.pendingAction?.type === "discard";
+  const isWaiting        = state.pendingAction && !mustRespond;
   const hasJSN      = (me?.hand ?? []).some((c) => c.action === "justsayno");
 
   const handleCardClick = useCallback((card) => {
@@ -68,7 +70,13 @@ export default function GameBoard({ state, myId, onMove, error }) {
     setSelectedCard(null); setModalMode(null); setTargetPlayer(null); setActionError(null);
   }, []);
 
-  const handleRespond    = useCallback(async (response) => { await onMove({ type: "respond", response }); }, [onMove]);
+  const handleRespond    = useCallback(async (responseOrObj) => {
+    if (typeof responseOrObj === "object" && responseOrObj !== null && "response" in responseOrObj) {
+      await onMove({ type: "respond", ...responseOrObj });
+    } else {
+      await onMove({ type: "respond", response: responseOrObj });
+    }
+  }, [onMove]);
   const handleEndTurn    = useCallback(async () => { if (!isMyTurn || state.pendingAction) return; setSelectedCard(null); setModalMode(null); await onMove({ type: "endTurn" }); }, [isMyTurn, state, onMove]);
 
   const opponentIndices = state.players.map((p, i) => ({ player: p, i })).filter(({ player }) => player.id !== myId);
@@ -79,7 +87,23 @@ export default function GameBoard({ state, myId, onMove, error }) {
       {/* ── Overlays ──────────────────────────────────────────────────────── */}
       {state.phase === "ended" && <WinnerOverlay winnerName={state.winner} isMe={state.winnerId === myId} onRestart={() => { window.location.href = "/"; }} />}
 
-      {mustRespond && state.pendingAction && (
+      {mustDiscard && state.pendingAction && (
+        <ActionModal mode="discard"
+          pendingAction={state.pendingAction}
+          myHand={me?.hand ?? []}
+          onConfirm={({ cardIds }) => onMove({ type: "discard", cardIds })}
+          onCancel={() => {}} />
+      )}
+
+      {mustPayAssets && state.pendingAction && (
+        <ActionModal mode="pay-assets"
+          pendingAction={{ ...state.pendingAction, attackerName: state.players[state.pendingAction.fromIdx]?.name ?? "Opponent" }}
+          myAssets={me?.assets ?? {}}
+          onConfirm={({ response, cards }) => handleRespond(response === "pay-assets" ? { response, cards } : response)}
+          onCancel={() => {}} />
+      )}
+
+      {mustRespond && !mustPayAssets && !mustDiscard && state.pendingAction && (
         <ActionModal mode="respond"
           pendingAction={{ ...state.pendingAction, attackerName: state.players[state.pendingAction.fromIdx]?.name ?? "Opponent" }}
           hasJustSayNo={hasJSN}

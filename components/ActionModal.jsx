@@ -20,11 +20,13 @@ const COLOR_DOT_HEX = {
  *  "pick-set"        — choose opponent complete set (Deal Breaker / Wrecking Ball)
  *  "pick-force-deal" — choose your prop + opponent prop to swap (Force Deal)
  *  "respond"         — target player responds to incoming action
+ *  "discard"         — player selects cards to discard (hand > 7 at end of turn)
  */
 export default function ActionModal({
   mode,
   card,
   myAssets = {},
+  myHand = [],
   opponentAssets = {},
   opponentName = "Opponent",
   myName = "You",
@@ -97,6 +99,23 @@ export default function ActionModal({
             onConfirm={({ targetColor, targetCardId, myColor, myCardId }) =>
               onConfirm({ targetColor, targetCardId, myColor, myCardId })}
             onCancel={onCancel}
+          />
+        )}
+
+        {mode === "discard" && pendingAction && (
+          <DiscardCards
+            pendingAction={pendingAction}
+            myHand={myHand}
+            onConfirm={(cardIds) => onConfirm({ cardIds })}
+          />
+        )}
+
+        {mode === "pay-assets" && pendingAction && (
+          <PayWithAssets
+            pendingAction={pendingAction}
+            attackerName={pendingAction.attackerName ?? "Opponent"}
+            myAssets={myAssets}
+            onConfirm={(cards) => onConfirm({ response: "pay-assets", cards })}
           />
         )}
 
@@ -399,6 +418,95 @@ function PickForceDeal({ opponentAssets, opponentName, myAssets, myName, onConfi
   );
 }
 
+function PayWithAssets({ pendingAction, attackerName, myAssets, onConfirm }) {
+  const [selected, setSelected] = useState([]); // [{ color, cardId }]
+  const remaining = pendingAction.params?.remaining ?? 0;
+
+  const allCards = Object.entries(myAssets).flatMap(([color, cards]) =>
+    cards.map((c) => ({ ...c, assetColor: color }))
+  );
+  const totalAssetValue = allCards.reduce((s, c) => s + (c.value ?? 0), 0);
+
+  const selectedValue = selected.reduce((s, sel) => {
+    const card = allCards.find((c) => c.id === sel.cardId);
+    return s + (card?.value ?? 0);
+  }, 0);
+
+  const isSelected = (id) => selected.some((s) => s.cardId === id);
+
+  const toggle = (color, cardId) => {
+    setSelected((prev) =>
+      prev.some((s) => s.cardId === cardId)
+        ? prev.filter((s) => s.cardId !== cardId)
+        : [...prev, { color, cardId }]
+    );
+  };
+
+  const canConfirm = selectedValue >= remaining || selected.length === allCards.length;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="text-center">
+        <div className="text-3xl mb-2">💸</div>
+        <h3 className="text-white font-bold text-lg">Pay with Properties</h3>
+        <p className="text-slate-300 text-sm mt-1">
+          You owe <span className="text-red-400 font-bold">${remaining}M</span> more to {attackerName}
+        </p>
+        <p className="text-slate-500 text-xs mt-0.5">
+          Your bank couldn't cover it — select properties to give
+        </p>
+      </div>
+
+      {/* Running counter */}
+      <div className={`flex items-center justify-between px-4 py-2 rounded-xl border ${
+        selectedValue >= remaining ? "border-emerald-500/40 bg-emerald-900/20" : "border-white/10 bg-white/5"
+      }`}>
+        <span className="text-slate-400 text-sm">Selected value</span>
+        <span className={`font-bold text-lg ${selectedValue >= remaining ? "text-emerald-400" : "text-white"}`}>
+          ${selectedValue}M / ${remaining}M
+        </span>
+      </div>
+
+      {allCards.length === 0 ? (
+        <p className="text-slate-400 text-center text-sm italic">You have no properties — debt forgiven!</p>
+      ) : (
+        <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+          {allCards.map((c) => (
+            <div
+              key={c.id}
+              onClick={() => toggle(c.assetColor, c.id)}
+              className={`cursor-pointer rounded-xl border-2 p-1.5 transition-all ${
+                isSelected(c.id)
+                  ? "border-emerald-400 bg-emerald-900/30 scale-105"
+                  : "border-white/10 bg-white/5 hover:border-white/30"
+              }`}
+            >
+              <Card card={c} small />
+              <div className="text-center text-white/70 mt-0.5" style={{ fontSize: 9 }}>
+                ${c.value}M
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {totalAssetValue < remaining && (
+        <p className="text-yellow-400 text-xs text-center">
+          You can't cover the full debt — select all your properties to pay what you can.
+        </p>
+      )}
+
+      <button
+        onClick={() => onConfirm(allCards.length === 0 ? [] : selected)}
+        disabled={!canConfirm && allCards.length > 0}
+        className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold transition-colors"
+      >
+        {allCards.length === 0 ? "OK — Nothing to Give" : `Pay ${selected.length} Card${selected.length !== 1 ? "s" : ""} ($${selectedValue}M)`}
+      </button>
+    </div>
+  );
+}
+
 function RespondToAction({ pendingAction, attackerName, hasJustSayNo, onAccept, onBlock }) {
   const color = pendingAction.params?.targetColor ?? "";
   const actionLabels = {
@@ -441,6 +549,60 @@ function RespondToAction({ pendingAction, attackerName, hasJustSayNo, onAccept, 
           Accept
         </button>
       </div>
+    </div>
+  );
+}
+
+function DiscardCards({ pendingAction, myHand, onConfirm }) {
+  const [selected, setSelected] = useState([]);
+  const needed = pendingAction.params?.count ?? 1;
+
+  const toggle = (id) => {
+    setSelected((prev) =>
+      prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : prev.length < needed
+          ? [...prev, id]
+          : [...prev.slice(1), id]   // replace oldest selection when at limit
+    );
+  };
+
+  const visibleHand = myHand.filter((c) => c.type !== "hidden");
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="text-center">
+        <div className="text-3xl mb-2">🃏</div>
+        <h3 className="text-white font-bold text-lg">Discard Down to 7</h3>
+        <p className="text-slate-300 text-sm mt-1">
+          Select <span className="text-red-400 font-bold">{needed}</span> card{needed > 1 ? "s" : ""} to discard
+        </p>
+        <p className="text-slate-500 text-xs mt-0.5">({selected.length}/{needed} selected)</p>
+      </div>
+
+      <div className="flex flex-wrap gap-2 max-h-52 overflow-y-auto">
+        {visibleHand.map((c) => (
+          <div
+            key={c.id}
+            onClick={() => toggle(c.id)}
+            className={`cursor-pointer rounded-xl border-2 p-1 transition-all ${
+              selected.includes(c.id)
+                ? "border-red-400 bg-red-900/30 scale-105"
+                : "border-white/10 bg-white/5 hover:border-white/30"
+            }`}
+          >
+            <Card card={c} small />
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={() => onConfirm(selected)}
+        disabled={selected.length !== needed}
+        className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold transition-colors"
+      >
+        Discard {selected.length} Card{selected.length !== 1 ? "s" : ""}
+      </button>
     </div>
   );
 }
