@@ -141,7 +141,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
         <ActionModal mode="respond"
           pendingAction={{ ...state.pendingAction, attackerName: state.players[state.pendingAction.fromIdx]?.name ?? "Opponent" }}
           myAssets={me?.assets ?? {}}
-          attackerAssets={state.players[state.pendingAction.fromIdx]?.assets ?? {}}
+          opponentAssets={state.players[state.pendingAction.fromIdx]?.assets ?? {}}
           hasJustSayNo={hasJSN}
           onConfirm={({ response }) => handleRespond(response)}
           onCancel={() => {}} />

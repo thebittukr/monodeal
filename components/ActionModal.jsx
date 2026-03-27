@@ -147,6 +147,8 @@ export default function ActionModal({
             pendingAction={pendingAction}
             attackerName={pendingAction.attackerName ?? "Opponent"}
             hasJustSayNo={hasJustSayNo}
+            myAssets={myAssets}
+            attackerAssets={opponentAssets}
             onAccept={() => onConfirm({ response: "accept" })}
             onBlock={() => onConfirm({ response: "block" })}
           />
