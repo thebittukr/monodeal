@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { narrateCharacter } from "@/lib/narrator";
 
 // ── City theme configs ────────────────────────────────────────────────────────
@@ -369,7 +368,7 @@ function buildThreeScene(canvas, stateRef) {
   renderer.setSize(W, H, false);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.2;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -775,21 +774,24 @@ function CharacterSlot({ url, charIndex, playerName, bubbleDelayMs }) {
     const H = canvas.clientHeight || 420;
     const camera = new THREE.PerspectiveCamera(42, W / H, 0.01, 100);
 
-    // Build a simple neutral env map so PBR textures/colours render correctly
+    // Neutral env map from a plain white data texture — drives PBR specular
+    // without needing RoomEnvironment (which has webpack bundling issues)
     const pmrem = new THREE.PMREMGenerator(renderer);
-    pmrem.compileEquirectangularShader();
-    const envTex = pmrem.fromScene(new THREE.RoomEnvironment()).texture;
-    scene.environment = envTex;   // drives specular/metalness
+    const neutralEnv = pmrem.fromScene(new THREE.Scene()).texture;
+    scene.environment = neutralEnv;
     pmrem.dispose();
 
-    // Lights — strong ambient so diffuse colour always shows
-    scene.add(new THREE.AmbientLight(0xffffff, 2.0));
-    const key = new THREE.DirectionalLight(0xfff4e0, 2.5);
+    // Lights — strong ambient + two directionals ensure diffuse colour shows
+    scene.add(new THREE.AmbientLight(0xffffff, 3.0));
+    const key = new THREE.DirectionalLight(0xfff4e0, 3.0);
     key.position.set(1.5, 3, 2);
     scene.add(key);
-    const fill = new THREE.DirectionalLight(0xaabbff, 0.8);
+    const fill = new THREE.DirectionalLight(0xaabbff, 1.2);
     fill.position.set(-2, 1, 1);
     scene.add(fill);
+    const back = new THREE.DirectionalLight(0xffffff, 1.0);
+    back.position.set(0, 2, -3);
+    scene.add(back);
 
     // Load GLB
     const loader = new GLTFLoader();

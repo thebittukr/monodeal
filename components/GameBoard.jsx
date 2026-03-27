@@ -3,7 +3,6 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import Card from "./Card";
 import AssetDisplay from "./AssetDisplay";
 import ActionModal from "./ActionModal";
@@ -533,15 +532,16 @@ function ModelCanvas({ url, width, height, spinDir = 1 }) {
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.01, 100);
 
     const pmrem = new THREE.PMREMGenerator(renderer);
-    pmrem.compileEquirectangularShader();
-    scene.environment = pmrem.fromScene(new THREE.RoomEnvironment()).texture;
+    scene.environment = pmrem.fromScene(new THREE.Scene()).texture;
     pmrem.dispose();
 
-    scene.add(new THREE.AmbientLight(0xffffff, 2.0));
-    const key = new THREE.DirectionalLight(0xfff4e0, 2.5);
+    scene.add(new THREE.AmbientLight(0xffffff, 3.0));
+    const key = new THREE.DirectionalLight(0xfff4e0, 3.0);
     key.position.set(1.5, 3, 2); scene.add(key);
-    const fill = new THREE.DirectionalLight(0xaabbff, 0.8);
+    const fill = new THREE.DirectionalLight(0xaabbff, 1.2);
     fill.position.set(-2, 1, 1); scene.add(fill);
+    const back = new THREE.DirectionalLight(0xffffff, 1.0);
+    back.position.set(0, 2, -3); scene.add(back);
 
     const dracoLoader = new DRACOLoader();
     dracoLoader.setDecoderPath('/draco/');
