@@ -44,20 +44,20 @@ export async function POST(req) {
   switch (action) {
     // ── createRoom ────────────────────────────────────────────────────────────
     case "createRoom": {
-      const { playerName } = body;
+      const { playerName, avatarId } = body;
       if (!playerName?.trim()) return err("playerName required", 400);
 
       let roomId;
       do { roomId = genRoomId(); } while (await getRoom(roomId));
 
-      const room = createRoom(roomId, playerName.trim(), body.maxPlayers ?? 4);
+      const room = createRoom(roomId, playerName.trim(), body.maxPlayers ?? 4, avatarId ?? 15);
       await setRoom(roomId, room);
       return ok({ roomId, playerId: room.hostId });
     }
 
     // ── joinRoom ──────────────────────────────────────────────────────────────
     case "joinRoom": {
-      const { roomId, playerName } = body;
+      const { roomId, playerName, avatarId } = body;
       if (!roomId?.trim() || !playerName?.trim()) return err("roomId and playerName required", 400);
 
       const code = roomId.trim().toUpperCase();
@@ -66,7 +66,7 @@ export async function POST(req) {
       if (room.phase !== "waiting") return err("Game already in progress", 400);
       if (room.players.length >= (room.roomMaxPlayers ?? 4)) return err("Room is full", 400);
 
-      const { room: updated, playerId } = joinRoom(room, playerName.trim());
+      const { room: updated, playerId } = joinRoom(room, playerName.trim(), avatarId ?? 15);
       await setRoom(code, updated);
       return ok({ playerId });
     }
@@ -100,13 +100,13 @@ export async function POST(req) {
 
     // ── createSoloRoom ────────────────────────────────────────────────────────
     case "createSoloRoom": {
-      const { playerName } = body;
+      const { playerName, avatarId } = body;
       if (!playerName?.trim()) return err("playerName required", 400);
 
       let roomId;
       do { roomId = genRoomId(); } while (await getRoom(roomId));
 
-      const { room, playerId } = createSoloRoom(roomId, playerName.trim());
+      const { room, playerId } = createSoloRoom(roomId, playerName.trim(), avatarId ?? 15);
       // Run bot turns if first player is a bot (safety check)
       runBotTurns(room);
       await setRoom(roomId, room);

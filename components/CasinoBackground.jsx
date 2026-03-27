@@ -1,8 +1,9 @@
 "use client";
 import { useRef, useMemo, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Stars } from "@react-three/drei";
+import { Stars, Html } from "@react-three/drei";
 import * as THREE from "three";
+import { getAvatar } from "@/lib/avatars";
 
 // ── City theme configs ────────────────────────────────────────────────────────
 export const CITY_CONFIGS = {
@@ -251,6 +252,119 @@ function Crowd({ neons, cheering = false }) {
   );
 }
 
+// ── Seated Player at Table ────────────────────────────────────────────────────
+function SeatedPlayer({ position, rotation, bodyColor, accentColor, emoji, name, phase }) {
+  const rootRef = useRef();
+  const lArmRef = useRef();
+  const rArmRef = useRef();
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime + phase;
+    if (!rootRef.current) return;
+    // Subtle breathing animation
+    rootRef.current.position.y = position[1] + Math.sin(t * 0.8) * 0.008;
+    // Occasional look-around
+    if (rootRef.current.children[0]) {
+      rootRef.current.children[0].rotation.y = Math.sin(t * 0.3) * 0.2;
+    }
+    // Arms resting on table
+    if (lArmRef.current) lArmRef.current.rotation.x = -0.6 + Math.sin(t * 0.8) * 0.04;
+    if (rArmRef.current) rArmRef.current.rotation.x = -0.6 + Math.sin(t * 0.8) * 0.04;
+  });
+
+  const skin = "#f5c9a8";
+
+  return (
+    <group ref={rootRef} position={position} rotation={rotation}>
+      {/* Chair back */}
+      <mesh position={[0, 0.2, -0.28]}>
+        <boxGeometry args={[0.52, 0.55, 0.06]} />
+        <meshStandardMaterial color="#1a0800" roughness={0.8} metalness={0.2} />
+      </mesh>
+      <mesh position={[0, -0.1, -0.28]}>
+        <boxGeometry args={[0.52, 0.06, 0.06]} />
+        <meshStandardMaterial color="#1a0800" roughness={0.8} />
+      </mesh>
+      {/* Chair seat */}
+      <mesh position={[0, -0.28, -0.1]}>
+        <boxGeometry args={[0.5, 0.07, 0.42]} />
+        <meshStandardMaterial color="#1a0800" roughness={0.8} metalness={0.2} />
+      </mesh>
+      {/* Chair legs */}
+      {[[-0.22,-0.3],[0.22,-0.3],[-0.22,0.12],[0.22,0.12]].map(([x,z],i)=>(
+        <mesh key={i} position={[x, -0.5, z]}>
+          <cylinderGeometry args={[0.02,0.02,0.44,6]} />
+          <meshStandardMaterial color="#c9a227" metalness={0.8} roughness={0.3} />
+        </mesh>
+      ))}
+
+      {/* Torso */}
+      <mesh position={[0, 0.02, 0]}>
+        <cylinderGeometry args={[0.14, 0.16, 0.38, 10]} />
+        <meshStandardMaterial color={bodyColor} roughness={0.65} emissive={bodyColor} emissiveIntensity={0.12} />
+      </mesh>
+
+      {/* Neck */}
+      <mesh position={[0, 0.24, 0]}>
+        <cylinderGeometry args={[0.038, 0.044, 0.1, 8]} />
+        <meshStandardMaterial color={skin} roughness={0.7} />
+      </mesh>
+
+      {/* Head */}
+      <group>
+        <mesh position={[0, 0.38, 0]}>
+          <sphereGeometry args={[0.13, 16, 16]} />
+          <meshStandardMaterial color={skin} roughness={0.6} />
+        </mesh>
+        {/* Hair */}
+        <mesh position={[0, 0.44, -0.01]}>
+          <sphereGeometry args={[0.14, 14, 14]} />
+          <meshStandardMaterial color="#1a0600" roughness={0.92} />
+        </mesh>
+
+        {/* Avatar emoji name tag above head */}
+        <Html position={[0, 0.38, 0]} center distanceFactor={4} zIndexRange={[1, 0]} occlude={false}>
+          <div style={{
+            background: `linear-gradient(135deg, ${bodyColor}dd, #000000cc)`,
+            border: `1px solid ${accentColor}88`,
+            borderRadius: 8,
+            padding: "3px 7px",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            whiteSpace: "nowrap",
+            boxShadow: `0 0 10px ${accentColor}44`,
+            transform: "translateY(-36px)",
+            pointerEvents: "none",
+          }}>
+            <span style={{ fontSize: 14 }}>{emoji}</span>
+            <span style={{ color: "#fff", fontSize: 10, fontWeight: 700, fontFamily: "sans-serif" }}>{name}</span>
+          </div>
+        </Html>
+      </group>
+
+      {/* Left arm — resting on table */}
+      <group ref={lArmRef} position={[-0.18, 0.1, 0.12]} rotation={[-0.6, 0, -0.2]}>
+        <mesh>
+          <cylinderGeometry args={[0.028, 0.022, 0.3, 8]} />
+          <meshStandardMaterial color={skin} roughness={0.7} />
+        </mesh>
+      </group>
+
+      {/* Right arm — resting on table */}
+      <group ref={rArmRef} position={[0.18, 0.1, 0.12]} rotation={[-0.6, 0, 0.2]}>
+        <mesh>
+          <cylinderGeometry args={[0.028, 0.022, 0.3, 8]} />
+          <meshStandardMaterial color={skin} roughness={0.7} />
+        </mesh>
+      </group>
+
+      {/* Accent glow */}
+      <pointLight position={[0, 0.35, 0.15]} color={accentColor} intensity={0.4} distance={1.5} decay={2} />
+    </group>
+  );
+}
+
 // ── City skyline ──────────────────────────────────────────────────────────────
 function Skyline({ neons }) {
   const buildings = useMemo(() => Array.from({ length: 36 }, (_, i) => ({
@@ -404,7 +518,7 @@ function GroundRings({ color }) {
 }
 
 // ── Main scene ────────────────────────────────────────────────────────────────
-function Scene({ config, cheering }) {
+function Scene({ config, cheering, players = [] }) {
   const { sky, neons, fogDist } = config;
   const [n0, n1, n2] = neons;
 
@@ -459,6 +573,31 @@ function Scene({ config, cheering }) {
       {/* Crowd */}
       <Crowd neons={neons} cheering={cheering} />
 
+      {/* Seated players at table */}
+      {players.slice(0, 4).map((player, i) => {
+        // Seat positions around the table (relative to table center at [0, -1.35, 0.5])
+        const seats = [
+          { pos: [0,    -0.88,  3.8], rot: [0, Math.PI,  0] },  // Front (player 0 / you)
+          { pos: [-3.8, -0.88,  0.5], rot: [0,  1.55, 0] },     // Left
+          { pos: [0,    -0.88, -2.8], rot: [0,  0,    0] },     // Back
+          { pos: [ 3.8, -0.88,  0.5], rot: [0, -1.55, 0] },    // Right
+        ];
+        const seat = seats[i];
+        const av = getAvatar(player.avatar ?? 15);
+        return (
+          <SeatedPlayer
+            key={player.id ?? i}
+            position={seat.pos}
+            rotation={seat.rot}
+            bodyColor={av.color || "#1a0a2e"}
+            accentColor={av.accent || "#ffd700"}
+            emoji={av.emoji}
+            name={player.name}
+            phase={i * 1.3}
+          />
+        );
+      })}
+
       {/* City skyline */}
       <Skyline neons={neons} />
 
@@ -491,7 +630,7 @@ function CinematicCamera() {
 }
 
 // ── Public export ─────────────────────────────────────────────────────────────
-export default function CasinoBackground({ city = "lasvegas", cheering = false }) {
+export default function CasinoBackground({ city = "lasvegas", cheering = false, players = [] }) {
   const config = CITY_CONFIGS[city] ?? CITY_CONFIGS.lasvegas;
 
   return (
@@ -503,7 +642,7 @@ export default function CasinoBackground({ city = "lasvegas", cheering = false }
         dpr={[1, 1.5]}
       >
         <Suspense fallback={null}>
-          <Scene config={config} cheering={cheering} />
+          <Scene config={config} cheering={cheering} players={players} />
           <CinematicCamera />
         </Suspense>
       </Canvas>

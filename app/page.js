@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CasinoBackground from "@/components/CasinoBackground";
 import { CITY_CONFIGS } from "@/components/CasinoBackground";
+import AvatarPicker from "@/components/AvatarPicker";
+import { DEFAULT_AVATAR_ID } from "@/lib/avatars";
 
 const COLOR_PILLS = [
   { color: "#ef4444" }, { color: "#3b82f6" }, { color: "#22c55e" },
@@ -19,6 +21,7 @@ export default function HomePage() {
   const [err,        setErr]        = useState("");
   const [activeGame, setActiveGame] = useState(null); // { roomId, playerId, phase }
   const [city,       setCity]       = useState("lasvegas");
+  const [avatarId,   setAvatarId]   = useState(DEFAULT_AVATAR_ID);
 
   // ── Check localStorage for an active game to rejoin ─────────────────────
   useEffect(() => {
@@ -50,17 +53,20 @@ export default function HomePage() {
       }
       const savedCity = localStorage.getItem("pr_city");
       if (savedCity && CITY_CONFIGS[savedCity]) setCity(savedCity);
+      const savedAvatar = localStorage.getItem("pr_avatar");
+      if (savedAvatar) setAvatarId(parseInt(savedAvatar));
     })();
   }, []);
 
   async function handleCreate() {
     if (!name.trim()) { setErr("Enter your name first"); return; }
     setErr(""); setLoading(true);
+    localStorage.setItem("pr_avatar", avatarId.toString());
     try {
       const res  = await fetch("/api/game", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "createRoom", playerName: name.trim(), maxPlayers }),
+        body: JSON.stringify({ action: "createRoom", playerName: name.trim(), maxPlayers, avatarId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -73,11 +79,12 @@ export default function HomePage() {
   async function handleSolo() {
     if (!name.trim()) { setErr("Enter your name first"); return; }
     setErr(""); setLoading(true);
+    localStorage.setItem("pr_avatar", avatarId.toString());
     try {
       const res = await fetch("/api/game", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "createSoloRoom", playerName: name.trim() }),
+        body: JSON.stringify({ action: "createSoloRoom", playerName: name.trim(), avatarId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -91,12 +98,13 @@ export default function HomePage() {
     if (!name.trim())   { setErr("Enter your name first"); return; }
     if (!roomId.trim()) { setErr("Enter a room code"); return; }
     setErr(""); setLoading(true);
+    localStorage.setItem("pr_avatar", avatarId.toString());
     const code = roomId.trim().toUpperCase();
     try {
       const res  = await fetch("/api/game", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "joinRoom", roomId: code, playerName: name.trim() }),
+        body: JSON.stringify({ action: "joinRoom", roomId: code, playerName: name.trim(), avatarId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -182,6 +190,15 @@ export default function HomePage() {
             placeholder="e.g. Alex" maxLength={20}
             className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-all mb-4"
           />
+
+          {/* Avatar picker */}
+          <div className="mb-4">
+            <label className="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1.5">Your Avatar</label>
+            <AvatarPicker
+              selected={avatarId}
+              onSelect={(id) => { setAvatarId(id); localStorage.setItem("pr_avatar", id.toString()); }}
+            />
+          </div>
 
           {tab === "create" && (
             <>
