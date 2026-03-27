@@ -37,7 +37,8 @@ export default function GameBoard({ state, myId, onMove, error }) {
   const mustRespond      = pendingForMe || pendingMultiForMe;
   const mustPayAssets    = pendingForMe && state.pendingAction?.type === "pay-choice";
   const mustDiscard      = pendingForMe && state.pendingAction?.type === "discard";
-  const isWaiting        = state.pendingAction && !mustRespond;
+  const mustCounterJsn   = state.pendingAction?.jsnChain?.waitingForIdx === myIdx;
+  const isWaiting        = state.pendingAction && !mustRespond && !mustCounterJsn;
   const hasJSN      = (me?.hand ?? []).some((c) => c.action === "justsayno");
 
   const handleCardClick = useCallback((card) => {
@@ -109,6 +110,16 @@ export default function GameBoard({ state, myId, onMove, error }) {
           onCancel={handleModalCancel} />
       )}
 
+      {mustCounterJsn && state.pendingAction && (
+        <ActionModal mode="counter-jsn"
+          pendingAction={{
+            ...state.pendingAction,
+            defenderName: state.players[state.pendingAction.jsnChain?.defenderIdx]?.name ?? "Opponent",
+          }}
+          onConfirm={({ response }) => handleRespond(response)}
+          onCancel={() => {}} />
+      )}
+
       {mustDiscard && state.pendingAction && (
         <ActionModal mode="discard"
           pendingAction={state.pendingAction}
@@ -126,7 +137,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
           onCancel={() => {}} />
       )}
 
-      {mustRespond && !mustPayAssets && !mustDiscard && state.pendingAction && (
+      {mustRespond && !mustPayAssets && !mustDiscard && !mustCounterJsn && state.pendingAction && (
         <ActionModal mode="respond"
           pendingAction={{ ...state.pendingAction, attackerName: state.players[state.pendingAction.fromIdx]?.name ?? "Opponent" }}
           hasJustSayNo={hasJSN}

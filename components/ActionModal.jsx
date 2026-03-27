@@ -105,6 +105,14 @@ export default function ActionModal({
           />
         )}
 
+        {mode === "counter-jsn" && pendingAction && (
+          <CounterJsn
+            pendingAction={pendingAction}
+            onCounter={() => onConfirm({ response: "counter-jsn" })}
+            onPass={() => onConfirm({ response: "pass-jsn" })}
+          />
+        )}
+
         {mode === "flip-wild" && card && (
           <FlipWild
             card={card}
@@ -591,6 +599,44 @@ function RespondToAction({ pendingAction, attackerName, hasJustSayNo, onAccept, 
           className="w-full py-3 rounded-xl bg-slate-600 hover:bg-slate-500 text-white font-semibold transition-colors"
         >
           Accept
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CounterJsn({ pendingAction, onCounter, onPass }) {
+  const chain    = pendingAction.jsnChain ?? {};
+  const blocked  = chain.blocked ?? true;
+  const defender = pendingAction.defenderName ?? "Opponent";
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="text-center">
+        <div className="text-4xl mb-2">🚫</div>
+        <h3 className="text-white font-bold text-lg">Just Say No Chain!</h3>
+        <p className="text-slate-300 text-sm mt-2">
+          {blocked
+            ? `${defender} blocked your action with Just Say No!`
+            : `Your Just Say No re-activated the action!`}
+        </p>
+        <p className="text-slate-400 text-xs mt-1">
+          You have a Just Say No — do you want to counter?
+        </p>
+      </div>
+      <div className="flex flex-col gap-2">
+        <button
+          onClick={onCounter}
+          className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-colors flex items-center justify-center gap-2"
+        >
+          <span>🚫</span>
+          <span>Counter with Just Say No!</span>
+        </button>
+        <button
+          onClick={onPass}
+          className="w-full py-3 rounded-xl bg-slate-600 hover:bg-slate-500 text-white font-semibold transition-colors"
+        >
+          {blocked ? "Let it stand — action blocked" : "Let it stand — action proceeds"}
         </button>
       </div>
     </div>
