@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const COLOR_PILLS = [
@@ -15,6 +15,38 @@ export default function HomePage() {
   const [maxPlayers, setMaxPlayers] = useState(4);
   const [loading,    setLoading]    = useState(false);
   const [err,        setErr]        = useState("");
+  const [activeGame, setActiveGame] = useState(null); // { roomId, playerId, phase }
+
+  // ── Check localStorage for an active game to rejoin ─────────────────────
+  useEffect(() => {
+    const entries = Object.entries(localStorage)
+      .filter(([k]) => k.startsWith("pr_") && k.endsWith("_pid"));
+
+    if (entries.length === 0) return;
+
+    // Check the most recent stored room (could be multiple; check all briefly)
+    (async () => {
+      for (const [key, playerId] of entries) {
+        const roomId = key.slice(3, -4); // pr_ROOMID_pid
+        try {
+          const res = await fetch(`/api/game?roomId=${roomId}&playerId=${playerId}`, { cache: "no-store" });
+          if (!res.ok) {
+            // Room gone — clean up stale key
+            localStorage.removeItem(key);
+            continue;
+          }
+          const data = await res.json();
+          if (data.phase === "ended") {
+            localStorage.removeItem(key);
+            continue;
+          }
+          // Found a live game
+          setActiveGame({ roomId, playerId, phase: data.phase });
+          return;
+        } catch { /* ignore */ }
+      }
+    })();
+  }, []);
 
   async function handleCreate() {
     if (!name.trim()) { setErr("Enter your name first"); return; }
@@ -75,6 +107,24 @@ export default function HomePage() {
       </div>
 
       <div className="flex-1 flex flex-col items-center px-4 pb-8">
+        {/* Rejoin banner */}
+        {activeGame && (
+          <div className="w-full max-w-sm mb-4 bg-emerald-900/50 border border-emerald-500/40 rounded-2xl px-5 py-4 flex items-center gap-3">
+            <div className="flex-1">
+              <div className="text-emerald-300 font-bold text-sm">Active game found</div>
+              <div className="text-emerald-400/70 text-xs font-mono mt-0.5">Room: {activeGame.roomId} · {activeGame.phase}</div>
+            </div>
+            <button
+              onClick={() => {
+                sessionStorage.setItem(`pr_${activeGame.roomId}_pid`, activeGame.playerId);
+                router.push(`/room/${activeGame.roomId}`);
+              }}
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors"
+            >
+              Rejoin →
+            </button>
+          </div>
+        )}
         <div className="w-full max-w-sm bg-slate-800/80 backdrop-blur border border-white/10 rounded-3xl shadow-2xl p-6">
           <div className="flex rounded-2xl bg-slate-900/60 p-1 mb-6 gap-1">
             <TabBtn active={tab === "create"} onClick={() => { setTab("create"); setErr(""); }}>Create Room</TabBtn>
