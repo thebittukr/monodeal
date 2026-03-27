@@ -553,51 +553,112 @@ function PayChoice({ pendingAction, attackerName, myBank, myAssets, onConfirm })
   );
 }
 
-function RespondToAction({ pendingAction, attackerName, hasJustSayNo, onAccept, onBlock }) {
-  const color = pendingAction.params?.targetColor ?? "";
+function RespondToAction({ pendingAction, attackerName, hasJustSayNo, myAssets, attackerAssets, onAccept, onBlock }) {
+  const { type, params = {} } = pendingAction;
+  const targetColor   = params.targetColor ?? "";
+  const isPayment     = ["debtcollector", "rent", "birthday", "propertytax", "taxtherich"].includes(type);
+
   const actionLabels = {
-    debtcollector: `${attackerName} wants you to pay $${pendingAction.params?.amount}M!`,
-    birthday:      `${attackerName} is celebrating — you must pay $${pendingAction.params?.amount}M!`,
-    slydeal:       `${attackerName} is using Sly Deal to steal your property!`,
-    dealbreaker:   `${attackerName} played Deal Breaker on your ${color} set!`,
-    rent:          `${attackerName} is charging you $${pendingAction.params?.amount}M rent!`,
+    debtcollector: `${attackerName} wants you to pay $${params.amount}M!`,
+    birthday:      `${attackerName} is celebrating — you must pay $${params.amount}M!`,
+    slydeal:       `${attackerName} is stealing one of your properties!`,
+    dealbreaker:   `${attackerName} is stealing your entire ${COLORS[targetColor]?.label ?? targetColor} set!`,
+    rent:          `${attackerName} is charging you $${params.amount}M rent!`,
     identityswap:  `${attackerName} wants to swap ALL your properties with theirs! 🔀`,
-    taxtherich:    `${attackerName} wants to take half your bank ($${pendingAction.params?.amount}M)! 💸`,
-    wreckingball:  `${attackerName} wants to demolish your ${color} property set! 💥`,
-    forceddeal:    `${attackerName} wants to force-swap one of your properties! 🔄`,
+    taxtherich:    `${attackerName} is taking half your bank ($${params.amount}M)! 💸`,
+    wreckingball:  `${attackerName} is demolishing your ${COLORS[targetColor]?.label ?? targetColor} set! 💥`,
+    forceddeal:    `${attackerName} wants to swap one of your properties!`,
     propertytax:   `${attackerName} declared Property Tax — you owe $1M per complete set!`,
   };
 
-  const label = actionLabels[pendingAction.type] ?? "Opponent played an action against you!";
-  const isPayment = ["debtcollector", "rent", "birthday", "propertytax"].includes(pendingAction.type);
+  const label = actionLabels[type] ?? "Opponent played an action against you!";
+
+  // ── Cards being taken / affected ─────────────────────────────────────────
+  let takenCards   = [];  // cards leaving your assets
+  let givenCards   = [];  // cards coming to you (force deal only)
+  let takenLabel   = "";
+  let givenLabel   = "";
+
+  if (type === "slydeal" && params.targetCardId && params.targetColor) {
+    const arr  = myAssets[params.targetColor] ?? [];
+    const card = arr.find((c) => c.id === params.targetCardId);
+    if (card) { takenCards = [card]; takenLabel = "Being stolen from you"; }
+  }
+
+  if ((type === "dealbreaker" || type === "wreckingball") && targetColor) {
+    takenCards = myAssets[targetColor] ?? [];
+    takenLabel = type === "wreckingball" ? "Being demolished" : "Being stolen";
+  }
+
+  if (type === "forceddeal" && params.targetCardId && params.targetColor) {
+    const arr  = myAssets[params.targetColor] ?? [];
+    const card = arr.find((c) => c.id === params.targetCardId);
+    if (card) { takenCards = [card]; takenLabel = "They take from you"; }
+
+    if (attackerAssets && params.myCardId && params.myColor) {
+      const aArr  = attackerAssets[params.myColor] ?? [];
+      const aCard = aArr.find((c) => c.id === params.myCardId);
+      if (aCard) { givenCards = [aCard]; givenLabel = "You receive in return"; }
+    }
+  }
+
+  if (type === "identityswap") {
+    takenCards = Object.values(myAssets).flat();
+    takenLabel = "Your properties (all swapped away)";
+    if (attackerAssets) {
+      givenCards = Object.values(attackerAssets).flat();
+      givenLabel = "You receive in return";
+    }
+  }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <div className="text-center">
         <div className="text-3xl mb-2">⚠️</div>
         <h3 className="text-white font-bold text-lg">Incoming Action!</h3>
         <p className="text-slate-300 text-sm mt-2">{label}</p>
         {isPayment && (
           <p className="text-slate-500 text-xs mt-1">
-            Your cash will be taken first — if short, you'll choose properties to cover the rest.
+            Pick which cash + properties to pay — you decide.
           </p>
         )}
       </div>
 
+      {/* Cards being taken */}
+      {takenCards.length > 0 && (
+        <div className="bg-red-950/40 border border-red-500/30 rounded-xl p-3">
+          <div className="text-xs font-bold text-red-400 uppercase tracking-wide mb-2">{takenLabel}</div>
+          <div className="flex flex-wrap gap-1.5">
+            {takenCards.map((c) => (
+              <div key={c.id} className="opacity-90">
+                <Card card={c} small />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Cards received (force deal / identity swap) */}
+      {givenCards.length > 0 && (
+        <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-xl p-3">
+          <div className="text-xs font-bold text-emerald-400 uppercase tracking-wide mb-2">{givenLabel}</div>
+          <div className="flex flex-wrap gap-1.5">
+            {givenCards.map((c) => (
+              <div key={c.id} className="opacity-90">
+                <Card card={c} small />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-2">
         {hasJustSayNo && (
-          <button
-            onClick={onBlock}
-            className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-colors flex items-center justify-center gap-2"
-          >
-            <span>🚫</span>
-            <span>Just Say No!</span>
+          <button onClick={onBlock} className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-colors flex items-center justify-center gap-2">
+            <span>🚫</span><span>Just Say No!</span>
           </button>
         )}
-        <button
-          onClick={onAccept}
-          className="w-full py-3 rounded-xl bg-slate-600 hover:bg-slate-500 text-white font-semibold transition-colors"
-        >
+        <button onClick={onAccept} className="w-full py-3 rounded-xl bg-slate-600 hover:bg-slate-500 text-white font-semibold transition-colors">
           Accept
         </button>
       </div>
