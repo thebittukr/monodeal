@@ -69,7 +69,7 @@ export default function CasinoBackground({
       {/* Desktop: Date character in white card */}
       <div className="hidden sm:block" style={{ position: "fixed", bottom: 10, right: 10, zIndex: 25, pointerEvents: "none" }}>
         <div style={{ background: "white", borderRadius: 20, overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", width: 220 }}>
-          <img src="/dates/strawberry.png" alt="" style={{ width: "100%", display: "block" }} />
+          <img src="https://pub-3b44ace66a3b4c17af6fa229197f3026.r2.dev/dates/strawberry.gif" alt="" style={{ width: "100%", display: "block" }} />
         </div>
         {showBubble && (
           <div style={{
@@ -86,7 +86,7 @@ export default function CasinoBackground({
       {/* Mobile */}
       <div className="sm:hidden" style={{ position: "fixed", bottom: 5, right: 5, zIndex: 25, pointerEvents: "none" }}>
         <div style={{ background: "white", borderRadius: 14, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", width: 100 }}>
-          <img src="/dates/strawberry.png" alt="" style={{ width: "100%", display: "block" }} />
+          <img src="https://pub-3b44ace66a3b4c17af6fa229197f3026.r2.dev/dates/strawberry.gif" alt="" style={{ width: "100%", display: "block" }} />
         </div>
       </div>
     </div>
