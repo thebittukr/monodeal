@@ -8,7 +8,7 @@ export default function Nav() {
 
   async function handleSignOut() {
     try {
-      await fetch("/api/auth/sign-out", { method: "POST" });
+      await fetch("/api/auth/sign-out", { method: "POST", headers: { "Content-Type": "application/json" } });
       window.location.href = "/";
     } catch {
       window.location.href = "/";
