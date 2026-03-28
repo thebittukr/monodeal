@@ -589,9 +589,44 @@ function ModelCanvas({ url, width, height, spinDir = 1 }) {
 
 // ── Winner Overlay ───────────────────────────────────────────────────────────
 function WinnerOverlay({ winnerName, isMe, fairnessProof, onPlayAgain }) {
+  const [seconds, setSeconds] = useState(30);
+  const [praiseIdx, setPraiseIdx] = useState(0);
+
+  const winPraises = [
+    "You absolutely crushed it! 🔥",
+    "The table has never seen anyone like you! 👑",
+    "Pure genius strategy! 🧠",
+    "They never stood a chance! 💪",
+    "Champion energy right there! ✨",
+    "Your date is SO proud of you! 😍",
+    "Legendary play. Absolutely legendary! 🏆",
+  ];
+
+  const lossPraises = [
+    "That was a tough one... but you'll be back! 💪",
+    "Every champion loses before they win! 🌟",
+    "Shake it off. The next game is yours! 🔥",
+    "Your date believes in you. Try again! ❤️",
+    "Close game! One more try? 🎲",
+  ];
+
+  const phrases = isMe ? winPraises : lossPraises;
+
+  // Countdown timer
+  useEffect(() => {
+    const timer = setInterval(() => setSeconds(s => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Cycle praise messages every 5 seconds
+  useEffect(() => {
+    const cycle = setInterval(() => setPraiseIdx(i => (i + 1) % phrases.length), 5000);
+    return () => clearInterval(cycle);
+  }, [phrases.length]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95">
-      {/* 3D Models */}
+      {/* 3D Models — dates celebrating */}
       <div className="hidden sm:block absolute right-0 bottom-0 pointer-events-none"><ModelCanvas url="/models/skye.glb" width={280} height={580} spinDir={1} /></div>
       <div className="hidden md:block absolute left-0 bottom-0 pointer-events-none"><ModelCanvas url="/models/crimson.glb" width={240} height={520} spinDir={-1} /></div>
 
@@ -602,16 +637,36 @@ function WinnerOverlay({ winnerName, isMe, fairnessProof, onPlayAgain }) {
         <p className="text-slate-400 text-sm mb-1">
           {isMe ? "You completed 3 property sets first!" : `${winnerName} won this round.`}
         </p>
-        {isMe && <p className="text-amber-400 text-xs font-semibold mb-4">Congratulations!</p>}
-        {!isMe && <p className="text-slate-600 text-xs mb-4">Better luck next round.</p>}
 
-        <button onClick={onPlayAgain}
-          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-base transition-all shadow-lg shadow-violet-600/25 mb-2">
-          {isMe ? "Play Again" : "Win It Back"}
+        {/* Rotating praise messages from date */}
+        <div className="my-4 min-h-[40px] flex items-center justify-center">
+          <p className="text-amber-300 text-sm font-semibold italic transition-opacity duration-500" key={praiseIdx}>
+            {phrases[praiseIdx]}
+          </p>
+        </div>
+
+        {/* Play Again button — disabled for first 5 seconds to let praise sink in */}
+        <button
+          onClick={seconds <= 25 ? onPlayAgain : undefined}
+          className={`w-full py-3.5 rounded-xl font-bold text-base transition-all shadow-lg mb-2 ${
+            seconds <= 25
+              ? "bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-violet-600/25 cursor-pointer"
+              : "bg-slate-700 text-slate-500 cursor-not-allowed"
+          }`}
+        >
+          {seconds > 25 ? `Wait ${seconds - 25}s...` : isMe ? "Play Again" : "Win It Back"}
         </button>
 
+        {/* Countdown bar */}
+        <div className="w-full h-1 bg-slate-800 rounded-full mt-2 mb-3 overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-violet-600 to-amber-500 rounded-full transition-all duration-1000"
+            style={{ width: `${((30 - seconds) / 30) * 100}%` }}
+          />
+        </div>
+
         {fairnessProof && (
-          <div className="mt-3 pt-3 border-t border-white/5">
+          <div className="pt-3 border-t border-white/5">
             <div className="text-[10px] text-slate-600 font-bold uppercase tracking-widest mb-1">Provably Fair</div>
             <div className="text-[9px] text-slate-700 font-mono truncate" title={fairnessProof.serverSeed}>
               Seed: {fairnessProof.serverSeed?.slice(0, 20)}...
