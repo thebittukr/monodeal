@@ -78,7 +78,7 @@ export async function POST(req: Request) {
         try {
           await writeFile(mp4Path, buffer);
           await mkdir(framesDir, { recursive: true });
-          execSync(`ffmpeg -y -i "${mp4Path}" -vf "format=rgba,chromakey=0x00FF00:0.2:0.08,despill=type=green:mix=0.5,scale=300:-1,fps=10" "${framesDir}/f%04d.png"`, { timeout: 60000 });
+          execSync(`ffmpeg -y -i "${mp4Path}" -vf "format=rgba,chromakey=0xFF00FF:0.25:0.1,scale=300:-1,fps=10" "${framesDir}/f%04d.png"`, { timeout: 60000 });
           execSync(`ffmpeg -y -framerate 10 -i "${framesDir}/f%04d.png" -plays 0 -f apng "${pngPath}"`, { timeout: 60000 });
           execSync(`rm -rf "${framesDir}" "${mp4Path}"`);
           filename = `${slug}.png`;
