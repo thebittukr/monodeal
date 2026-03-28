@@ -5,7 +5,7 @@ import { getSessionUser, ensureUserProfile } from "@/lib/auth/session";
 import { z } from "zod";
 
 // GET — fetch my profile + stats
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Auth required" }, { status: 401 });
@@ -16,6 +16,27 @@ export async function GET() {
     // Profile
     const [profile] = await db.select().from(schema.userProfiles)
       .where(eq(schema.userProfiles.userId, user.id)).limit(1);
+
+    // Auto-detect country from IP if not set yet
+    if (profile && !profile.countryCode) {
+      const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+              || req.headers.get("x-real-ip")
+              || "";
+      if (ip && ip !== "127.0.0.1" && ip !== "::1") {
+        try {
+          const geo = await fetch(`http://ip-api.com/json/${ip}?fields=countryCode`);
+          if (geo.ok) {
+            const { countryCode } = await geo.json();
+            if (countryCode && countryCode.length === 2) {
+              await db.update(schema.userProfiles)
+                .set({ countryCode: countryCode.toUpperCase() })
+                .where(eq(schema.userProfiles.userId, user.id));
+              profile.countryCode = countryCode.toUpperCase();
+            }
+          }
+        } catch { /* GeoIP failed — skip silently */ }
+      }
+    }
 
     // Rating
     const [rating] = await db.select().from(schema.userRatings)
