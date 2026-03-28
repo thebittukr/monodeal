@@ -298,6 +298,8 @@ function DatesTab({ onError }: { onError: (e: string) => void }) {
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState("");
   const [form, setForm] = useState({ name: "", rarity: "common", style: "anime", gender: "female", priceCredits: 200, description: "", personality: "", backstory: "", isStarter: false });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
   const [videoFile, setVideoFile] = useState<File | null>(null);
 
   useEffect(() => { load(); }, []);
@@ -343,6 +345,21 @@ function DatesTab({ onError }: { onError: (e: string) => void }) {
 
   async function del(id: string) { if (!confirm("Delete this date?")) return; await fetch("/api/admin/girlfriends", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id }) }); load(); }
 
+  function startEdit(d: any) {
+    setEditId(d.id);
+    setEditForm({ name: d.name, rarity: d.rarity, style: d.style, gender: d.gender, priceCredits: d.priceCredits, personality: d.personality || "", description: d.description || "", backstory: d.backstory || "", isStarter: d.isStarter, thumbnailUrl: d.thumbnailUrl || "" });
+  }
+
+  async function saveEdit() {
+    if (!editId) return;
+    await fetch("/api/admin/girlfriends", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "update", id: editId, ...editForm }),
+    });
+    setEditId(null);
+    load();
+  }
+
   return (
     <div>
       <div className="flex gap-2 mb-4">
@@ -377,18 +394,50 @@ function DatesTab({ onError }: { onError: (e: string) => void }) {
           </button>
         </div>
       )}
-      <div className="space-y-1">
+      <div className="space-y-2">
         {dates.map((d: any) => (
-          <div key={d.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/5 text-xs">
-            <span className="text-lg">{d.gender === "female" ? "👩" : "👨"}</span>
-            <div className="flex-1 min-w-0">
-              <span className="text-white font-bold">{d.name}</span>
-              <span className={`ml-2 text-[9px] font-bold uppercase ${d.rarity === "legendary" ? "text-amber-400" : d.rarity === "epic" ? "text-purple-400" : d.rarity === "rare" ? "text-blue-400" : "text-slate-500"}`}>{d.rarity}</span>
-              {d.isStarter && <span className="ml-1 text-emerald-400 text-[9px]">FREE</span>}
-            </div>
-            <div className="text-amber-400">{d.priceCredits} cr</div>
-            <div className="text-slate-600">{d.totalEquipped} equip</div>
-            <button onClick={() => del(d.id)} className="text-slate-700 hover:text-red-400 text-[9px]">Del</button>
+          <div key={d.id} className="rounded-lg bg-white/[0.02] border border-white/5 overflow-hidden">
+            {editId === d.id ? (
+              /* ── Edit Mode ─────────────────────────────── */
+              <div className="p-3 space-y-2 bg-violet-900/10">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <Inp label="Name" value={editForm.name} set={v => setEditForm({...editForm, name: v})} />
+                  <Sel label="Rarity" value={editForm.rarity} set={v => setEditForm({...editForm, rarity: v})} opts={["common","rare","epic","legendary"]} />
+                  <Sel label="Style" value={editForm.style} set={v => setEditForm({...editForm, style: v})} opts={["anime","realistic","fantasy","cyberpunk","casual"]} />
+                  <Sel label="Gender" value={editForm.gender} set={v => setEditForm({...editForm, gender: v})} opts={["female","male"]} />
+                  <Inp label="Price" value={String(editForm.priceCredits)} set={v => setEditForm({...editForm, priceCredits: parseInt(v)||0})} />
+                  <Inp label="Thumbnail URL" value={editForm.thumbnailUrl} set={v => setEditForm({...editForm, thumbnailUrl: v})} />
+                </div>
+                <Inp label="Personality" value={editForm.personality} set={v => setEditForm({...editForm, personality: v})} />
+                <Inp label="Description" value={editForm.description} set={v => setEditForm({...editForm, description: v})} />
+                <Inp label="Backstory" value={editForm.backstory} set={v => setEditForm({...editForm, backstory: v})} />
+                <div className="flex gap-2">
+                  <button onClick={() => setEditForm({...editForm, isStarter: !editForm.isStarter})} className={`px-3 py-1 rounded text-[9px] font-bold ${editForm.isStarter ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-500"}`}>{editForm.isStarter ? "FREE Starter" : "Paid"}</button>
+                  <button onClick={saveEdit} className="px-4 py-1 rounded bg-emerald-600 text-white text-[9px] font-bold">Save</button>
+                  <button onClick={() => setEditId(null)} className="px-4 py-1 rounded bg-slate-700 text-slate-300 text-[9px] font-bold">Cancel</button>
+                </div>
+              </div>
+            ) : (
+              /* ── View Mode ─────────────────────────────── */
+              <div className="flex items-center gap-3 px-3 py-2 text-xs">
+                {d.thumbnailUrl ? (
+                  <img src={d.thumbnailUrl} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                ) : (
+                  <span className="text-lg">{d.gender === "female" ? "♀" : "♂"}</span>
+                )}
+                <div className="flex-1 min-w-0">
+                  <span className="text-white font-bold">{d.name}</span>
+                  <span className={`ml-2 text-[9px] font-bold uppercase ${d.rarity === "legendary" ? "text-amber-400" : d.rarity === "epic" ? "text-purple-400" : d.rarity === "rare" ? "text-blue-400" : "text-slate-500"}`}>{d.rarity}</span>
+                  <span className="ml-1 text-[9px] text-slate-600">{d.gender === "male" ? "♂" : "♀"}</span>
+                  {d.isStarter && <span className="ml-1 text-emerald-400 text-[9px]">FREE</span>}
+                  {d.personality && <div className="text-slate-600 text-[9px] truncate">{d.personality}</div>}
+                </div>
+                <div className="text-amber-400">{d.priceCredits} cr</div>
+                <div className="text-slate-600">{d.totalEquipped} equip</div>
+                <button onClick={() => startEdit(d)} className="px-2 py-1 rounded bg-violet-600/20 text-violet-400 hover:bg-violet-600/30 text-[9px]">Edit</button>
+                <button onClick={() => del(d.id)} className="px-2 py-1 rounded bg-red-900/20 text-red-500 hover:bg-red-900/40 text-[9px]">Del</button>
+              </div>
+            )}
           </div>
         ))}
       </div>
