@@ -287,21 +287,7 @@ function CharacterBubble({ charIndex, playerName, posLeft, bubbleDelayMs, gameAc
     return () => clearTimeout(t);
   }, [forceReactLine]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (!gameActive) return;
-    let showT, hideT, cycleT;
-    function showLine() {
-      const pool = Math.random() < 0.55 ? HYPE_LINES : SASSY_LINES;
-      const line = pool[Math.floor(Math.random() * pool.length)];
-      setBubble(line);
-      setShowBubble(true);
-      narrateCharacter(line, charIndex);
-      hideT  = setTimeout(() => setShowBubble(false), 4500);
-      cycleT = setTimeout(showLine, 32000 + Math.random() * 22000);
-    }
-    showT = setTimeout(showLine, bubbleDelayMs);
-    return () => { clearTimeout(showT); clearTimeout(hideT); clearTimeout(cycleT); };
-  }, [gameActive, bubbleDelayMs, charIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+  // No random chatter — date only reacts to game events via forceReactLine
 
   return (
     <div style={{
