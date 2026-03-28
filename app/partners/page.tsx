@@ -119,16 +119,9 @@ export default function PartnersPage() {
               return (
                 <button key={gf.id} onClick={() => setSelected(gf)}
                   className={`${rc.bg} border ${rc.border} rounded-2xl p-3 sm:p-4 text-left hover:scale-[1.02] transition-all group shadow-lg ${rc.glow}`}>
-                  {/* Date card */}
+                  {/* Date card — PNG only, white container */}
                   <div className="aspect-square bg-white rounded-xl mb-3 relative overflow-hidden">
-                    {gf.modelUrl ? (
-                      <video
-                        src={gf.modelUrl}
-                        autoPlay loop muted playsInline
-                        className="w-full h-full object-cover"
-                        style={{ pointerEvents: "none" }}
-                      />
-                    ) : gf.thumbnailUrl ? (
+                    {gf.thumbnailUrl ? (
                       <img src={gf.thumbnailUrl} alt={gf.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-slate-100 flex items-center justify-center">
@@ -163,14 +156,12 @@ export default function PartnersPage() {
       {selected && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setSelected(null)}>
           <div className="bg-slate-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            {/* Date preview — MP4 video or image */}
+            {/* Date preview — PNG on white */}
             <div className="w-full aspect-square bg-white rounded-t-2xl overflow-hidden relative">
-              {selected.modelUrl ? (
-                <video src={selected.modelUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
-              ) : selected.thumbnailUrl ? (
+              {selected.thumbnailUrl ? (
                 <img src={selected.thumbnailUrl} alt={selected.name} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-slate-200 flex items-center justify-center text-6xl">{selected.gender === "male" ? "♂" : "♀"}</div>
+                <div className="w-full h-full bg-slate-100 flex items-center justify-center text-6xl text-slate-300">{selected.gender === "male" ? "♂" : "♀"}</div>
               )}
               <button onClick={() => setSelected(null)}
                 className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition text-sm">&times;</button>

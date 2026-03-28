@@ -25,27 +25,6 @@ const LOSS_LINES = [
   "Shake it off!", "Pain is temporary, victory is forever",
 ];
 
-// Date character component — tries MP4 first, falls back to PNG
-function DateCharacter({ size = 220, rounded = 20 }) {
-  const [useVideo, setUseVideo] = useState(true);
-
-  return (
-    <div style={{ background: "white", borderRadius: rounded, overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", width: size }}>
-      {useVideo ? (
-        <video
-          autoPlay loop muted playsInline
-          onError={() => setUseVideo(false)}
-          style={{ width: "100%", display: "block" }}
-        >
-          <source src="/dates/crimson.mp4" type="video/mp4" />
-        </video>
-      ) : (
-        <img src="/dates/crimson.png" alt="" style={{ width: "100%", display: "block" }} />
-      )}
-    </div>
-  );
-}
-
 export default function CasinoBackground({
   city = "lasvegas",
   cheering = false,
@@ -87,9 +66,11 @@ export default function CasinoBackground({
           : `radial-gradient(ellipse 70% 50% at 15% 100%, ${c1}30 0%, transparent 55%), radial-gradient(ellipse 70% 50% at 85% 100%, ${c2}30 0%, transparent 55%), linear-gradient(180deg, #010108 0%, #04010e 60%, #080018 100%)`,
       }} />
 
-      {/* Desktop */}
+      {/* Desktop: Date character in white card */}
       <div className="hidden sm:block" style={{ position: "fixed", bottom: 10, right: 10, zIndex: 25, pointerEvents: "none" }}>
-        <DateCharacter size={220} rounded={20} />
+        <div style={{ background: "white", borderRadius: 20, overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", width: 220 }}>
+          <img src="/dates/strawberry.png" alt="" style={{ width: "100%", display: "block" }} />
+        </div>
         {showBubble && (
           <div style={{
             position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
@@ -104,7 +85,9 @@ export default function CasinoBackground({
 
       {/* Mobile */}
       <div className="sm:hidden" style={{ position: "fixed", bottom: 5, right: 5, zIndex: 25, pointerEvents: "none" }}>
-        <DateCharacter size={100} rounded={14} />
+        <div style={{ background: "white", borderRadius: 14, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", width: 100 }}>
+          <img src="/dates/strawberry.png" alt="" style={{ width: "100%", display: "block" }} />
+        </div>
       </div>
     </div>
   );
