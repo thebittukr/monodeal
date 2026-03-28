@@ -1,9 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
-import { narrateCharacter } from "@/lib/narrator";
 
 // ── City theme configs ────────────────────────────────────────────────────────
 export const CITY_CONFIGS = {
@@ -99,15 +95,8 @@ const CARD_REACT_LINES = [
   "They won't recover from that! 😈",
 ];
 
-// Shared Draco decoder (one instance reused across all character loaders)
-let _dracoLoader = null;
-function getDracoLoader() {
-  if (!_dracoLoader) {
-    _dracoLoader = new DRACOLoader();
-    _dracoLoader.setDecoderPath('/draco/');
-  }
-  return _dracoLoader;
-}
+// WebGL character rendering removed for performance.
+// Using static avatar images instead. Will switch to pre-rendered PNGs when available.
 
 // Positions that stay near edges so girls peek out beside the game board
 function getPositions(n) {
@@ -400,14 +389,14 @@ export default function CasinoBackground({
         })(),
       }} />
 
-      {/* Desktop character layer — ONE renderer for both girls */}
-      <div className="hidden sm:block" style={{
-        position: 'fixed', inset: 0, zIndex: 18, pointerEvents: 'none',
-      }}>
-        {/* Single shared-renderer canvas */}
-        <CharacterStage slots={displaySlots} positions={displayPositions} />
+      {/* Desktop: Static character image + speech bubbles (no WebGL = instant load) */}
+      <div className="hidden sm:block" style={{ position: 'fixed', inset: 0, zIndex: 18, pointerEvents: 'none' }}>
+        {/* Character image — positioned at right edge */}
+        <div style={{ position: 'absolute', bottom: 0, right: '2%', width: 200, height: 500, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <img src="/avatar-default.jpg" alt="" style={{ width: 140, height: 140, borderRadius: '50%', objectFit: 'cover', opacity: 0.9, marginBottom: 40 }} />
+        </div>
 
-        {/* HTML overlays: bubbles + name labels (no WebGL) */}
+        {/* Speech bubbles */}
         {displaySlots.map((slot, i) => (
           <CharacterBubble
             key={slot.url + i}
@@ -424,26 +413,18 @@ export default function CasinoBackground({
         ))}
       </div>
 
-      {/* Mobile: ONE girl, bottom-right, no renderer (uses CharacterStage with 1 slot) */}
-      <div className="sm:hidden" style={{
-        position: 'fixed', bottom: 0, right: 0, zIndex: 18, pointerEvents: 'none',
-        width: 110, height: 340,
-      }}>
+      {/* Mobile: small avatar, bottom-right */}
+      <div className="sm:hidden" style={{ position: 'fixed', bottom: 10, right: 10, zIndex: 18, pointerEvents: 'none' }}>
+        <img src="/avatar-default.jpg" alt="" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', opacity: 0.7 }} />
         {displaySlots[0] && (
-          <>
-            <CharacterStage
-              slots={[displaySlots[0]]}
-              positions={[50]}
-            />
-            <CharacterBubble
-              charIndex={displaySlots[0].charIndex}
-              playerName=""
-              posLeft={50}
-              bubbleDelayMs={12000}
-              gameActive={gameActive}
-              forceReactLine={reactingSlot === 0 ? reactingLine : (lossSlot === 0 ? lossLine : '')}
-            />
-          </>
+          <CharacterBubble
+            charIndex={displaySlots[0].charIndex}
+            playerName=""
+            posLeft={50}
+            bubbleDelayMs={12000}
+            gameActive={gameActive}
+            forceReactLine={reactingSlot === 0 ? reactingLine : (lossSlot === 0 ? lossLine : '')}
+          />
         )}
       </div>
     </div>
