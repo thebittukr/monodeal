@@ -148,6 +148,8 @@ function PlayersTab({ onError }: { onError: (e: string) => void }) {
                 className="px-2 py-1 rounded bg-red-600/20 text-red-400 hover:bg-red-600/30 text-[9px]">Ban</button>
               <button onClick={() => doAction(p.userId, "reset_risk")}
                 className="px-2 py-1 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 text-[9px]">Reset</button>
+              <button onClick={() => { if (confirm(`Delete user ${p.username}? This cannot be undone.`)) doAction(p.userId, "delete_user"); }}
+                className="px-2 py-1 rounded bg-red-900/30 text-red-500 hover:bg-red-900/50 text-[9px]">Del</button>
             </div>
           </div>
         ))}

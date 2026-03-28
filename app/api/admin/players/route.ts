@@ -82,6 +82,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    if (action === "delete_user") {
+      // Delete all user data across tables
+      await db.delete(schema.userGirlfriends).where(eq(schema.userGirlfriends.userId, userId));
+      await db.delete(schema.creditTransactions).where(eq(schema.creditTransactions.userId, userId));
+      await db.delete(schema.credits).where(eq(schema.credits.userId, userId));
+      await db.delete(schema.userRatings).where(eq(schema.userRatings.userId, userId));
+      await db.delete(schema.playerRiskProfiles).where(eq(schema.playerRiskProfiles.userId, userId));
+      await db.delete(schema.friendships).where(eq(schema.friendships.userId, userId));
+      await db.delete(schema.userProfiles).where(eq(schema.userProfiles.userId, userId));
+      return NextResponse.json({ ok: true, message: "User deleted" });
+    }
+
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (err: unknown) {
     return NextResponse.json({ error: (err as Error).message }, { status: 400 });
