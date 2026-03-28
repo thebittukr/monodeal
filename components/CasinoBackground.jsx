@@ -389,14 +389,12 @@ export default function CasinoBackground({
         })(),
       }} />
 
-      {/* Desktop: Static character image + speech bubbles (no WebGL = instant load) */}
+      {/* Desktop: Animated GIF character + speech bubbles */}
       <div className="hidden sm:block" style={{ position: 'fixed', inset: 0, zIndex: 18, pointerEvents: 'none' }}>
-        {/* Character image — positioned at right edge */}
-        <div style={{ position: 'absolute', bottom: 0, right: '2%', width: 200, height: 500, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <img src="/avatar-default.jpg" alt="" style={{ width: 140, height: 140, borderRadius: '50%', objectFit: 'cover', opacity: 0.9, marginBottom: 40 }} />
+        <div style={{ position: 'absolute', bottom: 0, right: 0, width: 280, height: '80vh', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <img src="/dates/crimson.gif" alt="" style={{ maxHeight: '75vh', width: 'auto', objectFit: 'contain', mixBlendMode: 'screen' }} />
         </div>
 
-        {/* Speech bubbles */}
         {displaySlots.map((slot, i) => (
           <CharacterBubble
             key={slot.url + i}
@@ -413,9 +411,9 @@ export default function CasinoBackground({
         ))}
       </div>
 
-      {/* Mobile: small avatar, bottom-right */}
-      <div className="sm:hidden" style={{ position: 'fixed', bottom: 10, right: 10, zIndex: 18, pointerEvents: 'none' }}>
-        <img src="/avatar-default.jpg" alt="" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', opacity: 0.7 }} />
+      {/* Mobile: smaller GIF, bottom-right */}
+      <div className="sm:hidden" style={{ position: 'fixed', bottom: 0, right: -10, zIndex: 18, pointerEvents: 'none', width: 130 }}>
+        <img src="/dates/crimson.gif" alt="" style={{ width: '100%', mixBlendMode: 'screen' }} />
         {displaySlots[0] && (
           <CharacterBubble
             charIndex={displaySlots[0].charIndex}
