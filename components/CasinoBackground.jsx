@@ -264,6 +264,42 @@ function CharacterStage({ slots, positions }) {
   );
 }
 
+// ── Date Character — WebM for Chrome/FF, GIF for Safari/iOS ─────────────────
+function DateCharacter({ mobile }) {
+  const [supportsWebM, setSupportsWebM] = useState(true);
+
+  useEffect(() => {
+    // Detect WebM support
+    const video = document.createElement('video');
+    const canPlay = video.canPlayType('video/webm; codecs="vp9"');
+    if (!canPlay || canPlay === '') setSupportsWebM(false);
+  }, []);
+
+  const blendStyle = { mixBlendMode: 'multiply' };
+
+  if (supportsWebM) {
+    return (
+      <video autoPlay loop muted playsInline
+        style={mobile
+          ? { width: '100%', ...blendStyle }
+          : { maxHeight: '75vh', width: 'auto', objectFit: 'contain', ...blendStyle }
+        }>
+        <source src="/dates/crimson.webm" type="video/webm" />
+      </video>
+    );
+  }
+
+  // Fallback: GIF for Safari/iOS
+  return (
+    <img src="/dates/crimson.gif" alt=""
+      style={mobile
+        ? { width: '100%', ...blendStyle }
+        : { maxHeight: '75vh', width: 'auto', objectFit: 'contain', ...blendStyle }
+      }
+    />
+  );
+}
+
 // ── Pure-HTML speech bubble overlay (no WebGL) ─────────────────────────────────
 function CharacterBubble({ charIndex, playerName, posLeft, bubbleDelayMs, gameActive, forceReactLine }) {
   const [bubble,     setBubble]     = useState('');
@@ -389,11 +425,10 @@ export default function CasinoBackground({
         })(),
       }} />
 
-      {/* Desktop: Animated WebM character (VP9 alpha = true transparency, 322KB) */}
+      {/* Desktop: Animated character */}
       <div className="hidden sm:block" style={{ position: 'fixed', inset: 0, zIndex: 18, pointerEvents: 'none' }}>
         <div style={{ position: 'absolute', bottom: 0, right: 0, width: 280, height: '80vh', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <video src="/dates/crimson.webm" autoPlay loop muted playsInline style={{ maxHeight: '75vh', width: 'auto', objectFit: 'contain', mixBlendMode: 'multiply' }} />
-        </div>
+          <DateCharacter />
 
         {displaySlots.map((slot, i) => (
           <CharacterBubble
@@ -411,9 +446,9 @@ export default function CasinoBackground({
         ))}
       </div>
 
-      {/* Mobile: smaller GIF, bottom-right */}
+      {/* Mobile */}
       <div className="sm:hidden" style={{ position: 'fixed', bottom: 0, right: -10, zIndex: 18, pointerEvents: 'none', width: 130 }}>
-        <video src="/dates/crimson.webm" autoPlay loop muted playsInline style={{ width: '100%', mixBlendMode: 'multiply' }} />
+        <DateCharacter mobile />
         {displaySlots[0] && (
           <CharacterBubble
             charIndex={displaySlots[0].charIndex}
