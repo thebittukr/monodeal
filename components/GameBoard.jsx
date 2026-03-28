@@ -302,9 +302,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
                     <div className="flex items-center gap-2.5 mb-2">
                       {/* Avatar with timer ring when it's their turn */}
                       <div className="relative">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs ${AVATAR_COLORS[oppIdx % 4]}`}>
-                          {opp.name[0]?.toUpperCase()}
-                        </div>
+                        <img src="/avatar-default.jpg" alt="" className="w-8 h-8 rounded-full object-cover" />
                         {isOppTurn && (
                           <div className="absolute -inset-1 rounded-full border-2 border-emerald-400/50 animate-pulse" />
                         )}
@@ -336,9 +334,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
             }`}>
               <div className="flex items-center gap-2.5 mb-2">
                 <div className="relative">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs ${AVATAR_COLORS[myIdx % 4]}`}>
-                    {me?.name?.[0]?.toUpperCase()}
-                  </div>
+                  <img src="/avatar-default.jpg" alt="" className="w-8 h-8 rounded-full object-cover" />
                   {isMyTurn && <div className="absolute -inset-1 rounded-full border-2 border-violet-400/40 animate-pulse" />}
                 </div>
                 <div>

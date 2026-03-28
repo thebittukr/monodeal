@@ -85,9 +85,7 @@ export default function ProfilePage() {
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-700 flex items-center justify-center text-2xl font-black text-white">
-            {(profile?.username || user.name || "?")[0].toUpperCase()}
-          </div>
+          <img src="/avatar-default.jpg" alt="Avatar" className="w-16 h-16 rounded-2xl object-cover" />
           <div>
             {editing ? (
               <div className="flex items-center gap-2">
