@@ -295,32 +295,86 @@ function FraudTab({ onError }: { onError: (e: string) => void }) {
 function DatesTab({ onError }: { onError: (e: string) => void }) {
   const [dates, setDates] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", rarity: "common", style: "anime", gender: "female", priceCredits: 200, description: "", personality: "", backstory: "", modelUrl: "", thumbnailUrl: "" });
+  const [uploading, setUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState("");
+  const [form, setForm] = useState({ name: "", rarity: "common", style: "anime", gender: "female", priceCredits: 200, description: "", personality: "", backstory: "", isStarter: false });
+  const [videoFile, setVideoFile] = useState<File | null>(null);
 
   useEffect(() => { load(); }, []);
   function load() { fetch("/api/admin/girlfriends").then(r => r.json()).then(d => d.error ? onError(d.error) : setDates(d.girlfriends || [])); }
 
-  async function save() {
-    const res = await fetch("/api/admin/girlfriends", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "create", ...form }) });
-    if (res.ok) { setShowForm(false); load(); } else { const d = await res.json(); alert(d.error); }
+  async function deleteAll() {
+    if (!confirm("DELETE ALL DATES? This removes all dates and player collections. Cannot be undone.")) return;
+    const fd = new FormData();
+    fd.append("action", "delete_all");
+    await fetch("/api/admin/dates-upload", { method: "POST", body: fd });
+    load();
+    setUploadMsg("All dates deleted");
   }
-  async function del(id: string) { if (!confirm("Delete?")) return; await fetch("/api/admin/girlfriends", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id }) }); load(); }
+
+  async function upload() {
+    if (!videoFile || !form.name) { setUploadMsg("Need video file and name"); return; }
+    setUploading(true); setUploadMsg("Converting green screen → transparent PNG...");
+    const fd = new FormData();
+    fd.append("action", "upload");
+    fd.append("video", videoFile);
+    fd.append("name", form.name);
+    fd.append("rarity", form.rarity);
+    fd.append("style", form.style);
+    fd.append("gender", form.gender);
+    fd.append("priceCredits", String(form.priceCredits));
+    fd.append("isStarter", String(form.isStarter));
+    fd.append("personality", form.personality);
+    fd.append("description", form.description);
+    fd.append("backstory", form.backstory);
+    try {
+      const res = await fetch("/api/admin/dates-upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setUploadMsg(`Created ${form.name} → ${data.thumbnailUrl}`);
+      setShowForm(false);
+      setVideoFile(null);
+      setForm({ name: "", rarity: "common", style: "anime", gender: "female", priceCredits: 200, description: "", personality: "", backstory: "", isStarter: false });
+      load();
+    } catch (err: unknown) {
+      setUploadMsg(`Error: ${(err as Error).message}`);
+    } finally { setUploading(false); }
+  }
+
+  async function del(id: string) { if (!confirm("Delete this date?")) return; await fetch("/api/admin/girlfriends", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id }) }); load(); }
 
   return (
     <div>
-      <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 rounded-lg bg-violet-600 text-white text-xs font-bold mb-4">{showForm ? "Cancel" : "+ Add Date"}</button>
+      <div className="flex gap-2 mb-4">
+        <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 rounded-lg bg-violet-600 text-white text-xs font-bold">{showForm ? "Cancel" : "+ Upload New Date"}</button>
+        <button onClick={deleteAll} className="px-4 py-2 rounded-lg bg-red-900/50 text-red-400 text-xs font-bold hover:bg-red-900/70">Delete All Dates</button>
+      </div>
+      {uploadMsg && <div className="mb-3 px-3 py-2 rounded-lg bg-slate-800 text-xs text-slate-300">{uploadMsg}</div>}
       {showForm && (
-        <div className="bg-black/20 rounded-xl p-4 mb-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <Inp label="Name" value={form.name} set={v => setForm({...form, name: v})} />
-          <Sel label="Rarity" value={form.rarity} set={v => setForm({...form, rarity: v})} opts={["common","rare","epic","legendary"]} />
-          <Sel label="Style" value={form.style} set={v => setForm({...form, style: v})} opts={["anime","realistic","fantasy","cyberpunk","casual"]} />
-          <Sel label="Gender" value={form.gender} set={v => setForm({...form, gender: v})} opts={["female","male"]} />
-          <Inp label="Price" value={String(form.priceCredits)} set={v => setForm({...form, priceCredits: parseInt(v)||0})} />
-          <Inp label="Model URL" value={form.modelUrl} set={v => setForm({...form, modelUrl: v})} />
-          <Inp label="Thumbnail" value={form.thumbnailUrl} set={v => setForm({...form, thumbnailUrl: v})} />
+        <div className="bg-black/20 rounded-xl p-4 mb-4 space-y-3">
+          <div className="bg-violet-900/20 border border-violet-500/20 rounded-lg p-3">
+            <p className="text-xs text-violet-300 font-bold mb-2">Upload green screen MP4</p>
+            <input type="file" accept="video/mp4" onChange={e => setVideoFile(e.target.files?.[0] || null)}
+              className="text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-violet-600 file:text-white file:text-xs file:font-bold file:cursor-pointer" />
+            <p className="text-[9px] text-slate-600 mt-1">MP4 with green (#00FF00) background → auto-converts to transparent APNG</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <Inp label="Name" value={form.name} set={v => setForm({...form, name: v})} />
+            <Sel label="Rarity" value={form.rarity} set={v => setForm({...form, rarity: v})} opts={["common","rare","epic","legendary"]} />
+            <Sel label="Style" value={form.style} set={v => setForm({...form, style: v})} opts={["anime","realistic","fantasy","cyberpunk","casual"]} />
+            <Sel label="Gender" value={form.gender} set={v => setForm({...form, gender: v})} opts={["female","male"]} />
+            <Inp label="Price (credits)" value={String(form.priceCredits)} set={v => setForm({...form, priceCredits: parseInt(v)||0})} />
+            <div><label className="text-[9px] text-slate-600 font-bold uppercase block mb-0.5">Free Starter</label>
+              <button onClick={() => setForm({...form, isStarter: !form.isStarter})} className={`px-3 py-1.5 rounded text-xs font-bold ${form.isStarter ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-500"}`}>{form.isStarter ? "Yes — FREE" : "No — Paid"}</button>
+            </div>
+          </div>
           <Inp label="Personality" value={form.personality} set={v => setForm({...form, personality: v})} />
           <Inp label="Description" value={form.description} set={v => setForm({...form, description: v})} />
-          <div className="col-span-full"><button onClick={save} disabled={!form.name} className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold disabled:opacity-50">Create</button></div>
+          <Inp label="Backstory" value={form.backstory} set={v => setForm({...form, backstory: v})} />
+          <button onClick={upload} disabled={uploading || !form.name || !videoFile}
+            className="px-6 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold disabled:opacity-50">
+            {uploading ? "Converting..." : "Upload & Create Date"}
+          </button>
         </div>
       )}
       <div className="space-y-1">
