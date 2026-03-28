@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 
-// ── City theme configs ────────────────────────────────────────────────────────
 export const CITY_CONFIGS = {
   lasvegas:   { label: "Las Vegas",        neons: ["#ffd700","#ff6600","#ff3333"] },
   tokyo:      { label: "Tokyo",            neons: ["#ff2d78","#bf5fff","#ff69b4"] },
@@ -25,6 +24,27 @@ const LOSS_LINES = [
   "Sorry for your loss, honey", "Don't give up!", "They got lucky",
   "Shake it off!", "Pain is temporary, victory is forever",
 ];
+
+// Date character component — tries MP4 first, falls back to PNG
+function DateCharacter({ size = 220, rounded = 20 }) {
+  const [useVideo, setUseVideo] = useState(true);
+
+  return (
+    <div style={{ background: "white", borderRadius: rounded, overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", width: size }}>
+      {useVideo ? (
+        <video
+          autoPlay loop muted playsInline
+          onError={() => setUseVideo(false)}
+          style={{ width: "100%", display: "block" }}
+        >
+          <source src="/dates/crimson.mp4" type="video/mp4" />
+        </video>
+      ) : (
+        <img src="/dates/crimson.png" alt="" style={{ width: "100%", display: "block" }} />
+      )}
+    </div>
+  );
+}
 
 export default function CasinoBackground({
   city = "lasvegas",
@@ -67,9 +87,9 @@ export default function CasinoBackground({
           : `radial-gradient(ellipse 70% 50% at 15% 100%, ${c1}30 0%, transparent 55%), radial-gradient(ellipse 70% 50% at 85% 100%, ${c2}30 0%, transparent 55%), linear-gradient(180deg, #010108 0%, #04010e 60%, #080018 100%)`,
       }} />
 
-      {/* Desktop: APNG with true transparency — no blend mode, no gradient hacks */}
-      <div className="hidden sm:block" style={{ position: "fixed", bottom: 0, right: 0, zIndex: 25, pointerEvents: "none", width: 280 }}>
-        <img src="/dates/crimson.png" alt="" style={{ width: "100%" }} />
+      {/* Desktop */}
+      <div className="hidden sm:block" style={{ position: "fixed", bottom: 10, right: 10, zIndex: 25, pointerEvents: "none" }}>
+        <DateCharacter size={220} rounded={20} />
         {showBubble && (
           <div style={{
             position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
@@ -83,8 +103,8 @@ export default function CasinoBackground({
       </div>
 
       {/* Mobile */}
-      <div className="sm:hidden" style={{ position: "fixed", bottom: 0, right: -10, zIndex: 25, pointerEvents: "none", width: 120 }}>
-        <img src="/dates/crimson.png" alt="" style={{ width: "100%" }} />
+      <div className="sm:hidden" style={{ position: "fixed", bottom: 5, right: 5, zIndex: 25, pointerEvents: "none" }}>
+        <DateCharacter size={100} rounded={14} />
       </div>
     </div>
   );
