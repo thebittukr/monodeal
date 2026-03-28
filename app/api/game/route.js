@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { getRoom, setRoom } from "@/lib/gameStore";
+import { getRoom, setRoom, deleteRoom } from "@/lib/gameStore";
 import {
   createRoom,
   createSoloRoom,
@@ -14,6 +14,19 @@ import {
   runBotTurns,
   sanitizeState,
 } from "@/lib/gameEngine";
+import {
+  findOrCreateRoom,
+  registerOpenRoom,
+  removeFromQueue,
+  recordRoomActivity,
+  isRoomAbandoned,
+  checkReconnectExpiry,
+  handlePlayerLeave,
+  reconnectPlayer,
+  recordRageQuit,
+  canAddBots,
+  isBotWinner,
+} from "@/lib/matchmaking";
 
 function genRoomId() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -28,17 +41,33 @@ export async function GET(req) {
   if (!roomId) return err("roomId required", 400);
 
   const room = await getRoom(roomId);
-  if (!room)  return err("Room not found", 404);
+  if (!room) return err("Room not found", 404);
 
-  // Trigger delayed bot moves on each state poll (bots "think" then act)
-  if (room.phase === "playing") {
-    const before = JSON.stringify(room._botMoveAt);
-    runBotTurns(room);
-    const after = JSON.stringify(room._botMoveAt);
-    // Save only if state changed (bot moved or new timer scheduled)
-    if (before !== after || !room._botMoveAt) {
-      await setRoom(roomId, room);
+  // Record activity (keeps room alive)
+  recordRoomActivity(roomId).catch(() => {});
+
+  // Check for abandoned rooms
+  if (await isRoomAbandoned(roomId, room.phase)) {
+    if (room.phase === "waiting") {
+      removeFromQueue(roomId).catch(() => {});
+      await deleteRoom(roomId);
+      return err("Room expired — no players joined", 410);
     }
+    // In-progress game abandoned — void it
+    if (room.phase === "playing") {
+      room.phase = "voided";
+      await setRoom(roomId, room);
+      return ok(playerId ? sanitizeState(room, playerId) : room);
+    }
+  }
+
+  // Check reconnect window expiry — convert disconnected players to bots
+  if (room.phase === "playing") {
+    const conversions = checkReconnectExpiry(room);
+
+    // Trigger delayed bot moves on each state poll
+    runBotTurns(room);
+    await setRoom(roomId, room);
   }
 
   return ok(playerId ? sanitizeState(room, playerId) : room);
@@ -53,16 +82,39 @@ export async function POST(req) {
   const { action } = body;
 
   switch (action) {
-    // ── createRoom ────────────────────────────────────────────────────────────
+    // ── createRoom (with matchmaking — joins existing open room if available) ─
     case "createRoom": {
       const { playerName, avatarId } = body;
       if (!playerName?.trim()) return err("playerName required", 400);
+      const mode = body.mode || "free";
 
+      // Try matchmaking — find an open room first
+      const match = await findOrCreateRoom(mode);
+      if (match?.action === "join" && match.roomId) {
+        // Join existing open room
+        const existingRoom = await getRoom(match.roomId);
+        if (existingRoom && existingRoom.phase === "waiting" && existingRoom.players.length < (existingRoom.roomMaxPlayers ?? 4)) {
+          const { room: updated, playerId } = joinRoom(existingRoom, playerName.trim(), avatarId ?? 15);
+          // If room is now full, remove from queue
+          if (updated.players.length >= (updated.roomMaxPlayers ?? 4)) {
+            removeFromQueue(match.roomId).catch(() => {});
+          }
+          await setRoom(match.roomId, updated);
+          return ok({ roomId: match.roomId, playerId });
+        }
+      }
+
+      // No open room found — create new one
       let roomId;
       do { roomId = genRoomId(); } while (await getRoom(roomId));
 
       const room = createRoom(roomId, playerName.trim(), body.maxPlayers ?? 4, avatarId ?? 15);
+      room._meta = { ...(room._meta || {}), mode };
       await setRoom(roomId, room);
+
+      // Register in matchmaking queue
+      registerOpenRoom(roomId, mode).catch(() => {});
+
       return ok({ roomId, playerId: room.hostId });
     }
 
@@ -134,10 +186,13 @@ export async function POST(req) {
       if (room.phase !== "waiting") return err("Game already started", 400);
       if (room.hostId !== playerId) return err("Only host can fill bots", 403);
 
-      // Import bot pool from game engine
-      const { pickRandomBots, makeBot } = await import("@/lib/gameEngine");
+      // Credits rooms = REAL PLAYERS ONLY — no bots allowed
+      if (!canAddBots(room)) {
+        return err("Credits rooms require real players. Keep waiting or invite friends.", 400);
+      }
 
-      // Fill remaining seats with bots
+      // Free rooms — fill with bots
+      const { pickRandomBots, makeBot } = await import("@/lib/gameEngine");
       const cap = room.roomMaxPlayers ?? 4;
       const needed = cap - room.players.length;
       if (needed > 0) {
@@ -147,11 +202,56 @@ export async function POST(req) {
         }
       }
 
-      // Start the game
-      const { forceStart: fs } = await import("@/lib/gameEngine");
-      fs(room, playerId);
+      removeFromQueue(roomId).catch(() => {});
+      forceStart(room, playerId);
       runBotTurns(room);
       await setRoom(roomId, room);
+      return ok({ ok: true });
+    }
+
+    // ── leaveGame (rage quit / voluntary leave) ─────────────────────────
+    case "leaveGame": {
+      const { roomId, playerId } = body;
+      if (!roomId || !playerId) return err("roomId and playerId required", 400);
+
+      const room = await getRoom(roomId);
+      if (!room) return err("Room not found", 404);
+
+      if (room.phase === "waiting") {
+        // Remove player from waiting room
+        room.players = room.players.filter(p => p.id !== playerId);
+        if (room.players.length === 0) {
+          removeFromQueue(roomId).catch(() => {});
+          await deleteRoom(roomId);
+          return ok({ ok: true, message: "Room deleted" });
+        }
+        // Transfer host if host left
+        if (room.hostId === playerId) {
+          room.hostId = room.players[0].id;
+        }
+        await setRoom(roomId, room);
+        return ok({ ok: true });
+      }
+
+      if (room.phase === "playing") {
+        // Mark player as disconnected — bot takes over after 2 min
+        handlePlayerLeave(room, playerId);
+
+        // Record rage quit + apply penalty
+        const quitResult = await recordRageQuit(playerId);
+
+        // Record as a loss for the quitter (no refund)
+        // Entry fee stays in the pot — house keeps it if bot wins
+
+        await setRoom(roomId, room);
+        return ok({
+          ok: true,
+          message: "You left the game. Your entry fee is forfeited.",
+          penalty: quitResult.penalty,
+          quitCount: quitResult.quitCount,
+        });
+      }
+
       return ok({ ok: true });
     }
 
