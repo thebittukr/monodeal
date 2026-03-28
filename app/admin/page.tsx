@@ -7,6 +7,44 @@ type Tab = "overview" | "players" | "transactions" | "wallets" | "credits-usage"
 export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("overview");
   const [error, setError] = useState("");
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authorized, setAuthorized] = useState(false);
+
+  // Check admin access on mount
+  useEffect(() => {
+    fetch("/api/admin/stats")
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) {
+          setError(d.error);
+          setAuthorized(false);
+        } else {
+          setAuthorized(true);
+        }
+        setAuthChecked(true);
+      })
+      .catch(() => { setError("Connection failed"); setAuthChecked(true); });
+  }, []);
+
+  if (!authChecked) {
+    return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500">Checking access...</div>;
+  }
+
+  if (!authorized) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-center p-8">
+        <div>
+          <div className="text-4xl mb-4">🔒</div>
+          <h2 className="text-xl font-bold text-white mb-2">Admin Access Required</h2>
+          <p className="text-slate-500 text-sm mb-4">{error || "You need admin privileges to access this page."}</p>
+          <div className="flex gap-3 justify-center">
+            <a href="/login" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm transition">Sign In</a>
+            <a href="/" className="px-5 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white font-bold text-sm transition">Back to Game</a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
