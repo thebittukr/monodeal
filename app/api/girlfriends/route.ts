@@ -67,6 +67,7 @@ export async function GET(req: Request) {
     })
     .from(schema.girlfriends)
     .orderBy(sql`
+      CASE WHEN is_starter = true THEN 0 ELSE 1 END,
       CASE rarity
         WHEN 'legendary' THEN 1
         WHEN 'epic' THEN 2
