@@ -392,7 +392,7 @@ export default function CasinoBackground({
       {/* Desktop: Animated WebM character (VP9 alpha = true transparency, 322KB) */}
       <div className="hidden sm:block" style={{ position: 'fixed', inset: 0, zIndex: 18, pointerEvents: 'none' }}>
         <div style={{ position: 'absolute', bottom: 0, right: 0, width: 280, height: '80vh', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <video src="/dates/crimson.webm" autoPlay loop muted playsInline style={{ maxHeight: '75vh', width: 'auto', objectFit: 'contain' }} />
+          <video src="/dates/crimson.webm" autoPlay loop muted playsInline style={{ maxHeight: '75vh', width: 'auto', objectFit: 'contain', mixBlendMode: 'multiply' }} />
         </div>
 
         {displaySlots.map((slot, i) => (
@@ -413,7 +413,7 @@ export default function CasinoBackground({
 
       {/* Mobile: smaller GIF, bottom-right */}
       <div className="sm:hidden" style={{ position: 'fixed', bottom: 0, right: -10, zIndex: 18, pointerEvents: 'none', width: 130 }}>
-        <video src="/dates/crimson.webm" autoPlay loop muted playsInline style={{ width: '100%' }} />
+        <video src="/dates/crimson.webm" autoPlay loop muted playsInline style={{ width: '100%', mixBlendMode: 'multiply' }} />
         {displaySlots[0] && (
           <CharacterBubble
             charIndex={displaySlots[0].charIndex}
