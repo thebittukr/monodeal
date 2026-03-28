@@ -7,11 +7,13 @@ import AvatarPicker from "@/components/AvatarPicker";
 import { DEFAULT_AVATAR_ID } from "@/lib/avatars";
 import dynamic from "next/dynamic";
 import Nav from "@/components/Nav";
+import { useAuth } from "@/lib/useAuth";
 
 const IntroOverlay = dynamic(() => import("@/components/IntroOverlay"), { ssr: false });
 
 export default function HomePage() {
   const router = useRouter();
+  const { user, profile } = useAuth();
   const [tab, setTab] = useState("create");
   const [name, setName] = useState("");
   const [roomId, setRoomId] = useState("");
@@ -108,7 +110,14 @@ export default function HomePage() {
     } catch (e) { setErr(e.message); setLoading(false); }
   }
 
+  // Auto-fill name from auth profile
+  useEffect(() => {
+    if (profile?.username && !name) setName(profile.username);
+    else if (user?.name && !name) setName(user.name);
+  }, [profile, user]); // eslint-disable-line
+
   const currentCity = CITY_CONFIGS[city] || CITY_CONFIGS.lasvegas;
+  const isLoggedIn = !!user;
 
   return (
     <div className="min-h-full flex flex-col relative">
@@ -219,14 +228,25 @@ export default function HomePage() {
                 <TabBtn active={tab === "join"} onClick={() => { setTab("join"); setErr(""); }}>Join Room</TabBtn>
               </div>
 
-              {/* Name Input */}
-              <label className="block text-slate-500 text-[11px] font-bold uppercase tracking-widest mb-1.5">Player Name</label>
-              <input
-                type="text" value={name} onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && (tab === "create" ? handleCreate() : handleJoin())}
-                placeholder="Enter your name" maxLength={20}
-                className="w-full bg-black/30 border border-white/8 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all mb-4"
-              />
+              {/* Name Input — auto-filled when logged in, editable */}
+              <label className="block text-slate-500 text-[11px] font-bold uppercase tracking-widest mb-1.5">
+                {isLoggedIn ? "Playing as" : "Player Name"}
+              </label>
+              <div className="relative mb-4">
+                <input
+                  type="text" value={name} onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && (tab === "create" ? handleCreate() : handleJoin())}
+                  placeholder={isLoggedIn ? profile?.username || user?.name : "Enter your name"} maxLength={20}
+                  className={`w-full bg-black/30 border rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all ${
+                    isLoggedIn ? "border-violet-500/20" : "border-white/8"
+                  }`}
+                />
+                {isLoggedIn && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] text-violet-400/60">
+                    edit to change
+                  </span>
+                )}
+              </div>
 
               {/* Avatar */}
               <div className="mb-4">
