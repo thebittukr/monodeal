@@ -32,6 +32,7 @@ export default function PartnersPage() {
   const [girlfriends, setGirlfriends] = useState<Girlfriend[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [genderFilter, setGenderFilter] = useState("all");
   const [selected, setSelected] = useState<Girlfriend | null>(null);
 
   useEffect(() => {
@@ -41,7 +42,9 @@ export default function PartnersPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  const filtered = filter === "all" ? girlfriends : girlfriends.filter((g) => g.rarity === filter);
+  const filtered = girlfriends
+    .filter(g => filter === "all" || g.rarity === filter)
+    .filter(g => genderFilter === "all" || g.gender === genderFilter);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -77,6 +80,22 @@ export default function PartnersPage() {
           </div>
         )}
 
+        {/* Gender Filter */}
+        <div className="flex gap-2 mb-3">
+          {[
+            { key: "all", label: "All Dates" },
+            { key: "female", label: "Girlfriends" },
+            { key: "male", label: "Boyfriends" },
+          ].map((g) => (
+            <button key={g.key} onClick={() => setGenderFilter(g.key)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition border ${
+                genderFilter === g.key ? "bg-pink-600 border-pink-500 text-white" : "bg-black/20 border-white/5 text-slate-500 hover:text-white"
+              }`}>
+              {g.label}
+            </button>
+          ))}
+        </div>
+
         {/* Rarity Filter */}
         <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar">
           {["all", "legendary", "epic", "rare", "common"].map((r) => (
@@ -111,7 +130,10 @@ export default function PartnersPage() {
                   <div className="flex items-start justify-between gap-1">
                     <div className="min-w-0">
                       <div className="text-sm font-bold text-white truncate group-hover:text-violet-300 transition">{gf.name}</div>
-                      <div className={`text-[10px] font-bold uppercase tracking-wider ${rc.text}`}>{gf.rarity}</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${rc.text}`}>{gf.rarity}</span>
+                        <span className="text-[9px]">{gf.gender === "male" ? "♂" : "♀"}</span>
+                      </div>
                     </div>
                     <div className="text-right shrink-0">
                       {gf.isStarter ? (
