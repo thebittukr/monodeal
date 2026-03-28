@@ -1,15 +1,27 @@
 /**
  * Admin Date Upload API
- * Compresses images with sharp → stores in DB as base64 data URL
- * No filesystem dependency — works on Railway
+ * Compresses with sharp → uploads to Cloudflare R2 → stores URL in DB
  */
 
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { db, schema } from "@/lib/db";
 import sharp from "sharp";
+import { S3Client, PutObjectCommand, DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").filter(Boolean);
+
+const R2 = new S3Client({
+  region: "auto",
+  endpoint: process.env.R2_ENDPOINT || "",
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
+  },
+});
+
+const R2_BUCKET = process.env.R2_BUCKET || "propertyrush";
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || ""; // e.g. https://dates.propertyrush.com
 
 export async function POST(req: Request) {
   try {
@@ -22,6 +34,16 @@ export async function POST(req: Request) {
     const action = formData.get("action") as string;
 
     if (action === "delete_all") {
+      // Delete all R2 objects
+      try {
+        const list = await R2.send(new ListObjectsV2Command({ Bucket: R2_BUCKET, Prefix: "dates/" }));
+        if (list.Contents?.length) {
+          await R2.send(new DeleteObjectsCommand({
+            Bucket: R2_BUCKET,
+            Delete: { Objects: list.Contents.map(o => ({ Key: o.Key })) },
+          }));
+        }
+      } catch { /* R2 cleanup optional */ }
       await db.delete(schema.userGirlfriends);
       await db.delete(schema.girlfriends);
       return NextResponse.json({ ok: true, message: "All dates deleted" });
@@ -43,37 +65,47 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "File and name required" }, { status: 400 });
       }
 
+      const slug = name.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
       const buffer = Buffer.from(await file.arrayBuffer());
       const isGif = file.type === "image/gif" || file.name?.endsWith(".gif");
 
       let compressed: Buffer;
-      let mimeType: string;
+      let contentType: string;
+      let ext: string;
 
       if (isGif) {
-        // GIFs: resize only, keep animation (sharp preserves animated GIF)
         compressed = await sharp(buffer, { animated: true })
           .resize(400, 400, { fit: "inside", withoutEnlargement: true })
           .gif({ effort: 7 })
           .toBuffer();
-        mimeType = "image/gif";
+        contentType = "image/gif";
+        ext = "gif";
       } else {
-        // PNG/JPG: compress to WebP for smallest size
         compressed = await sharp(buffer)
           .resize(500, 500, { fit: "inside", withoutEnlargement: true })
           .webp({ quality: 80 })
           .toBuffer();
-        mimeType = "image/webp";
+        contentType = "image/webp";
+        ext = "webp";
       }
 
-      // Store as data URL in thumbnailUrl field
-      const dataUrl = `data:${mimeType};base64,${compressed.toString("base64")}`;
+      // Upload to R2
+      const key = `dates/${slug}.${ext}`;
+      await R2.send(new PutObjectCommand({
+        Bucket: R2_BUCKET,
+        Key: key,
+        Body: compressed,
+        ContentType: contentType,
+      }));
+
+      const thumbnailUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${key}` : key;
       const sizeKB = Math.round(compressed.length / 1024);
 
       const [created] = await db.insert(schema.girlfriends).values({
         name,
         rarity: rarity as any,
         modelUrl: "",
-        thumbnailUrl: dataUrl,
+        thumbnailUrl,
         priceCredits,
         style: style as any,
         gender: gender as any,
@@ -83,11 +115,7 @@ export async function POST(req: Request) {
         backstory: backstory || null,
       }).returning();
 
-      return NextResponse.json({
-        ok: true,
-        girlfriend: { ...created, thumbnailUrl: `[${sizeKB}KB data URL]` },
-        sizeKB,
-      });
+      return NextResponse.json({ ok: true, girlfriend: created, thumbnailUrl, sizeKB });
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
