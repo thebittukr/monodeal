@@ -107,7 +107,7 @@ export default function PartnersPage() {
                   {/* Static card — NO WebGL, just styled placeholder */}
                   <div className="aspect-[3/4] bg-gradient-to-b from-slate-700/30 to-black/40 rounded-xl mb-3 flex flex-col items-center justify-center gap-2 relative overflow-hidden">
                     {gf.thumbnailUrl ? (
-                      <img src={gf.thumbnailUrl} alt={gf.name} className="w-full h-full object-contain" style={{ mixBlendMode: 'screen' }} />
+                      <img src={gf.thumbnailUrl} alt={gf.name} className="w-full h-full object-contain" style={{ mixBlendMode: 'screen', filter: 'brightness(1.15) contrast(1.1)' }} />
                     ) : (
                       <>
                         <img src="/avatar-default.jpg" alt="" className="w-16 h-16 rounded-full object-cover opacity-60" />

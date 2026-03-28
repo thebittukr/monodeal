@@ -392,7 +392,7 @@ export default function CasinoBackground({
       {/* Desktop: Animated GIF character + speech bubbles */}
       <div className="hidden sm:block" style={{ position: 'fixed', inset: 0, zIndex: 18, pointerEvents: 'none' }}>
         <div style={{ position: 'absolute', bottom: 0, right: 0, width: 280, height: '80vh', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <img src="/dates/crimson.gif" alt="" style={{ maxHeight: '75vh', width: 'auto', objectFit: 'contain', mixBlendMode: 'screen' }} />
+          <img src="/dates/crimson.gif" alt="" style={{ maxHeight: '75vh', width: 'auto', objectFit: 'contain', mixBlendMode: 'screen', filter: 'brightness(1.15) contrast(1.1)' }} />
         </div>
 
         {displaySlots.map((slot, i) => (
@@ -413,7 +413,7 @@ export default function CasinoBackground({
 
       {/* Mobile: smaller GIF, bottom-right */}
       <div className="sm:hidden" style={{ position: 'fixed', bottom: 0, right: -10, zIndex: 18, pointerEvents: 'none', width: 130 }}>
-        <img src="/dates/crimson.gif" alt="" style={{ width: '100%', mixBlendMode: 'screen' }} />
+        <img src="/dates/crimson.gif" alt="" style={{ width: '100%', mixBlendMode: 'screen', filter: 'brightness(1.15) contrast(1.1)' }} />
         {displaySlots[0] && (
           <CharacterBubble
             charIndex={displaySlots[0].charIndex}
