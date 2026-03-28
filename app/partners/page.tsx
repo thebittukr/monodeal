@@ -3,10 +3,6 @@
 import { useState, useEffect } from "react";
 import Nav from "@/components/Nav";
 import { useAuth } from "@/lib/useAuth";
-import dynamic from "next/dynamic";
-
-// Only load 3D viewer when modal opens (saves ~2MB from initial bundle)
-const ModelViewer = dynamic(() => import("@/components/ModelViewer"), { ssr: false });
 
 interface Girlfriend {
   id: string;
@@ -109,13 +105,7 @@ export default function PartnersPage() {
                     {gf.thumbnailUrl ? (
                       <img src={gf.thumbnailUrl} alt={gf.name} className="w-full h-full object-contain" style={{}} />
                     ) : (
-                      <>
-                        <img src="/avatar-default.jpg" alt="" className="w-16 h-16 rounded-full object-cover opacity-60" />
-                        <div className="text-[9px] text-violet-400/50 font-bold uppercase">Tap to preview</div>
-                      </>
-                    )}
-                    {gf.modelUrl && (
-                      <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-violet-600/70 text-[8px] text-white font-bold">3D</div>
+                      <img src="/dates/crimson.png" alt="" className="w-full h-full object-contain opacity-80" />
                     )}
                   </div>
                   <div className="flex items-start justify-between gap-1">
@@ -144,12 +134,10 @@ export default function PartnersPage() {
           <div className="bg-slate-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
             {/* 3D Model (dynamically loaded) */}
             <div className="w-full h-[400px] sm:h-[500px] bg-black/50 rounded-t-2xl overflow-hidden relative">
-              {selected.modelUrl ? (
-                <ModelViewer url={selected.modelUrl} />
+              {selected.thumbnailUrl ? (
+                <img src={selected.thumbnailUrl} alt={selected.name} className="w-full h-full object-contain" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <img src="/avatar-default.jpg" alt="" className="w-32 h-32 rounded-full opacity-20" />
-                </div>
+                <img src="/dates/crimson.png" alt="" className="w-full h-full object-contain" />
               )}
               <button onClick={() => setSelected(null)}
                 className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition text-sm">&times;</button>
