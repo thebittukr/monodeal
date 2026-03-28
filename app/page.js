@@ -6,6 +6,7 @@ import { CITY_CONFIGS } from "@/components/CasinoBackground";
 import AvatarPicker from "@/components/AvatarPicker";
 import { DEFAULT_AVATAR_ID } from "@/lib/avatars";
 import dynamic from "next/dynamic";
+import Nav from "@/components/Nav";
 
 const IntroOverlay = dynamic(() => import("@/components/IntroOverlay"), { ssr: false });
 
@@ -114,22 +115,7 @@ export default function HomePage() {
       {pendingRoom && <IntroOverlay onDone={handleIntroDone} />}
       <CasinoBackground city={city} />
 
-      {/* ── Top Nav ─────────────────────────────────────────────────────── */}
-      <nav className="relative z-20 flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/5">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-sm font-black">P</div>
-          <span className="text-white font-bold text-lg hidden sm:block">Property<span className="text-violet-400">Rush</span></span>
-        </div>
-        <div className="flex items-center gap-1 sm:gap-2">
-          <NavLink href="/cards">Cards</NavLink>
-          <NavLink href="/leaderboard">Ranks</NavLink>
-          <NavLink href="/partners">Dates</NavLink>
-          <NavLink href="/fairness">Fair Play</NavLink>
-          <a href="/login" className="ml-2 px-4 py-1.5 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition">
-            Sign In
-          </a>
-        </div>
-      </nav>
+      <Nav />
 
       <div className="relative z-10 flex-1 flex flex-col">
         {/* ── Hero ───────────────────────────────────────────────────────── */}
@@ -478,14 +464,6 @@ function TabBtn({ active, onClick, children }) {
     >
       {children}
     </button>
-  );
-}
-
-function NavLink({ href, children }) {
-  return (
-    <a href={href} className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 text-xs font-medium transition hidden sm:block">
-      {children}
-    </a>
   );
 }
 

@@ -9,9 +9,10 @@
   --animate-bounce-sm: bounceSm 0.4s ease-in-out;
 }
 
-/* ─── Safelist via @source (Tailwind v4 pattern) ────────────────────────── */
+/* ─── Content sources ────────────────────────────────────────────────────── */
 @source "./app/**/*.{js,ts,jsx,tsx,mdx}";
 @source "./components/**/*.{js,ts,jsx,tsx,mdx}";
+@source "./lib/**/*.{js,ts}";
 
 /* ─── Base ───────────────────────────────────────────────────────────────── */
 * {
