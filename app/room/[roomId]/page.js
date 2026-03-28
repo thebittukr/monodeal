@@ -141,9 +141,12 @@ export default function RoomPage() {
     if (topEntry === prevLogRef.current) return;
     prevLogRef.current = topEntry;
     // Keywords that mean someone got hit
+    // Trigger card-play reaction on ANY new log entry (including bot moves)
+    setCardPlayCount(c => c + 1);
+
+    // Negative actions trigger loss reaction
     const negKeywords = /pays|steals|take|rent|collect|tax|swap|wreck|dismantle/i;
     if (negKeywords.test(topEntry)) {
-      // Find which player index is involved — pick a random one for now
       const numPlayers = state.players?.length ?? 2;
       setLossTarget(Math.floor(Math.random() * numPlayers));
     }
