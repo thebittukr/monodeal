@@ -18,12 +18,12 @@ const RETRY_BASE_MS       = 600;   // backoff base (600 ms, 1200 ms, 1800 ms)
 export default function RoomPage() {
   const { roomId } = useParams();
   const router     = useRouter();
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
 
   // Admins can't play — redirect to admin dashboard
   useEffect(() => {
-    if (isAdmin) router.push("/admin");
-  }, [isAdmin, router]);
+    if (!authLoading && isAdmin) router.push("/admin");
+  }, [isAdmin, authLoading, router]);
 
   const [myId,            setMyId]            = useState(null);
   const [state,           setState]           = useState(null);

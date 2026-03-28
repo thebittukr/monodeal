@@ -14,7 +14,20 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await authClient.signIn.email({ email, password });
+      const result = await authClient.signIn.email({ email, password });
+      if (result?.error) {
+        setError(result.error.message || "Login failed");
+        setLoading(false);
+        return;
+      }
+      // Check if admin — redirect appropriately
+      try {
+        const profile = await fetch("/api/profile").then(r => r.json());
+        if (profile?.isAdmin) {
+          window.location.href = "/admin";
+          return;
+        }
+      } catch {}
       window.location.href = "/";
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed");

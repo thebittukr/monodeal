@@ -13,12 +13,12 @@ const IntroOverlay = dynamic(() => import("@/components/IntroOverlay"), { ssr: f
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, profile, isAdmin } = useAuth();
+  const { user, profile, isAdmin, loading: authLoading } = useAuth();
 
   // Admins are redirected to admin dashboard — they can't play
   useEffect(() => {
-    if (isAdmin) router.push("/admin");
-  }, [isAdmin, router]);
+    if (!authLoading && isAdmin) router.push("/admin");
+  }, [isAdmin, authLoading, router]);
   const [tab, setTab] = useState("create");
   const [name, setName] = useState("");
   const [roomId, setRoomId] = useState("");
