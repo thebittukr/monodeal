@@ -69,7 +69,7 @@ export default function CasinoBackground({
 
       {/* Desktop: APNG with true transparency — no blend mode, no gradient hacks */}
       <div className="hidden sm:block" style={{ position: "fixed", bottom: 0, right: 0, zIndex: 25, pointerEvents: "none", width: 280 }}>
-        <img src="/dates/crimson.apng" alt="" style={{ width: "100%" }} />
+        <img src="/dates/crimson.png" alt="" style={{ width: "100%" }} />
         {showBubble && (
           <div style={{
             position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
@@ -84,7 +84,7 @@ export default function CasinoBackground({
 
       {/* Mobile */}
       <div className="sm:hidden" style={{ position: "fixed", bottom: 0, right: -10, zIndex: 25, pointerEvents: "none", width: 120 }}>
-        <img src="/dates/crimson.apng" alt="" style={{ width: "100%" }} />
+        <img src="/dates/crimson.png" alt="" style={{ width: "100%" }} />
       </div>
     </div>
   );
