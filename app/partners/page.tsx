@@ -172,17 +172,7 @@ export default function PartnersPage() {
                 <p className="text-slate-600 text-xs leading-relaxed mb-4">{selected.backstory}</p>
               )}
 
-              <div className="flex gap-2">
-                {selected.isStarter ? (
-                  <button className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition">
-                    Claim Free
-                  </button>
-                ) : (
-                  <button className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-sm transition shadow-lg shadow-violet-500/15">
-                    Buy for {selected.priceCredits} credits
-                  </button>
-                )}
-              </div>
+              <DateActions girlfriend={selected} onDone={() => { setSelected(null); /* reload */ fetch("/api/girlfriends?view=shop").then(r => r.json()).then(d => setGirlfriends(d.girlfriends || [])); }} />
             </div>
           </div>
         </div>
@@ -192,6 +182,80 @@ export default function PartnersPage() {
 }
 
 // ── 3D Model Viewer (fills container, proper framing) ────────────────────────
+
+// ── Date Actions (Claim/Buy/Equip) ───────────────────────────────────────────
+
+function DateActions({ girlfriend, onDone }: { girlfriend: Girlfriend; onDone: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function handleBuy() {
+    setLoading(true); setMsg("");
+    try {
+      const res = await fetch("/api/girlfriends", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "buy", girlfriendId: girlfriend.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 401) { setMsg("Sign in to claim dates"); return; }
+        throw new Error(data.error);
+      }
+      setMsg(data.message || "Claimed!");
+      setTimeout(onDone, 1500);
+    } catch (err: unknown) {
+      setMsg((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleEquip() {
+    setLoading(true); setMsg("");
+    try {
+      const res = await fetch("/api/girlfriends", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "equip", girlfriendId: girlfriend.id }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        if (res.status === 401) { setMsg("Sign in first"); return; }
+        throw new Error(data.error);
+      }
+      setMsg("Equipped!");
+      setTimeout(onDone, 1000);
+    } catch (err: unknown) {
+      setMsg((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex gap-2">
+        {girlfriend.isStarter ? (
+          <button onClick={handleBuy} disabled={loading}
+            className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition disabled:opacity-50">
+            {loading ? "Claiming..." : "Claim Free"}
+          </button>
+        ) : (
+          <button onClick={handleBuy} disabled={loading}
+            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-sm transition shadow-lg shadow-violet-500/15 disabled:opacity-50">
+            {loading ? "Buying..." : `Buy for ${girlfriend.priceCredits} credits`}
+          </button>
+        )}
+        <button onClick={handleEquip} disabled={loading}
+          className="px-4 py-3 rounded-xl bg-pink-600/20 border border-pink-500/20 text-pink-300 font-bold text-sm hover:bg-pink-600/30 transition disabled:opacity-50">
+          Equip
+        </button>
+      </div>
+      {msg && <p className={`text-xs mt-2 text-center ${msg.includes("!") ? "text-emerald-400" : "text-red-400"}`}>{msg}</p>}
+    </div>
+  );
+}
 
 function ModelViewer({ url }: { url: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
