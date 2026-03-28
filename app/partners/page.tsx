@@ -119,13 +119,22 @@ export default function PartnersPage() {
               return (
                 <button key={gf.id} onClick={() => setSelected(gf)}
                   className={`${rc.bg} border ${rc.border} rounded-2xl p-3 sm:p-4 text-left hover:scale-[1.02] transition-all group shadow-lg ${rc.glow}`}>
-                  {/* Static card — NO WebGL, just styled placeholder */}
-                  <div className="aspect-square bg-white rounded-xl mb-3 flex flex-col items-center justify-center gap-2 relative overflow-hidden">
-                    {gf.thumbnailUrl ? (
-                      <img src={gf.thumbnailUrl} alt={gf.name} className="w-full h-full object-contain" style={{}} />
+                  {/* Date card — video thumbnail with play button */}
+                  <div className="aspect-square bg-white rounded-xl mb-3 relative overflow-hidden">
+                    {gf.modelUrl ? (
+                      <video src={gf.modelUrl} muted playsInline preload="metadata" className="w-full h-full object-cover"
+                        style={{ pointerEvents: "none" }} />
+                    ) : gf.thumbnailUrl ? (
+                      <img src={gf.thumbnailUrl} alt={gf.name} className="w-full h-full object-cover" />
                     ) : (
-                      <img src="/dates/crimson.png" alt="" className="w-full h-full object-contain opacity-80" />
+                      <div className="w-full h-full bg-slate-200 flex items-center justify-center text-4xl">{gf.gender === "male" ? "♂" : "♀"}</div>
                     )}
+                    {/* Play button overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                      <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                        <span className="text-slate-800 text-sm ml-0.5">▶</span>
+                      </div>
+                    </div>
                   </div>
                   <div className="flex items-start justify-between gap-1">
                     <div className="min-w-0">
@@ -156,10 +165,12 @@ export default function PartnersPage() {
           <div className="bg-slate-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
             {/* 3D Model (dynamically loaded) */}
             <div className="w-full aspect-square bg-white rounded-t-2xl overflow-hidden relative">
-              {selected.thumbnailUrl ? (
-                <img src={selected.thumbnailUrl} alt={selected.name} className="w-full h-full object-contain" />
+              {selected.modelUrl ? (
+                <video src={selected.modelUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+              ) : selected.thumbnailUrl ? (
+                <img src={selected.thumbnailUrl} alt={selected.name} className="w-full h-full object-cover" />
               ) : (
-                <img src="/dates/crimson.png" alt="" className="w-full h-full object-contain" />
+                <div className="w-full h-full bg-slate-200 flex items-center justify-center text-6xl">{selected.gender === "male" ? "♂" : "♀"}</div>
               )}
               <button onClick={() => setSelected(null)}
                 className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition text-sm">&times;</button>
