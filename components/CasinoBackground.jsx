@@ -58,6 +58,22 @@ export default function CasinoBackground({
     return () => clearTimeout(t);
   }, [lossTarget]);
 
+  // Periodic encouragement during gameplay (every 20-40s)
+  useEffect(() => {
+    if (!gameActive) return;
+    let timer;
+    function speak() {
+      const lines = [...CARD_REACT_LINES, ...LOSS_LINES];
+      const line = lines[Math.floor(Math.random() * lines.length)];
+      setBubble(line);
+      setShowBubble(true);
+      setTimeout(() => setShowBubble(false), 3500);
+      timer = setTimeout(speak, 20000 + Math.random() * 20000);
+    }
+    timer = setTimeout(speak, 10000);
+    return () => clearTimeout(timer);
+  }, [gameActive]);
+
   const cfg = CITY_CONFIGS[city] || CITY_CONFIGS.lasvegas;
   const [c1, c2, c3] = cfg.neons;
 
@@ -71,7 +87,7 @@ export default function CasinoBackground({
       }} />
 
       {/* Desktop: Date character in white card */}
-      <div className="hidden sm:block" style={{ position: "fixed", bottom: 10, right: 10, zIndex: 25, pointerEvents: "none" }}>
+      <div className="hidden sm:block" style={{ position: "fixed", bottom: 10, right: 10, zIndex: 25, pointerEvents: "none" }} role="presentation">
         <div style={{ background: "white", borderRadius: 20, overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", width: 220 }}>
           <img src={dateImg} alt="" style={{ width: "100%", display: "block" }} />
         </div>
