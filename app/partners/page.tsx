@@ -99,20 +99,12 @@ export default function PartnersPage() {
                   onClick={() => setSelected(gf)}
                   className={`${rc.bg} border ${rc.border} rounded-2xl p-3 sm:p-4 text-left hover:scale-[1.02] transition-all shadow-lg ${rc.glow} group`}
                 >
-                  {/* Model thumbnail — use thumbnailUrl if available, else show model indicator */}
-                  <div className="aspect-[3/4] bg-black/30 rounded-xl mb-3 flex items-center justify-center overflow-hidden relative">
+                  {/* Model card — click to see 3D preview in modal */}
+                  <div className="aspect-[3/4] bg-gradient-to-b from-slate-800/50 to-black/40 rounded-xl mb-3 overflow-hidden relative">
                     {gf.thumbnailUrl ? (
                       <img src={gf.thumbnailUrl} alt={gf.name} className="w-full h-full object-cover" />
-                    ) : gf.modelUrl ? (
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="text-3xl">{gf.gender === "female" ? "👩" : "👨"}</div>
-                        <div className="text-[8px] text-violet-400/60 font-bold uppercase">3D Model</div>
-                      </div>
                     ) : (
-                      <div className="text-4xl opacity-30">{gf.gender === "female" ? "👩" : "👨"}</div>
-                    )}
-                    {gf.modelUrl && (
-                      <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-violet-600/50 flex items-center justify-center text-[8px] text-white font-bold">3D</div>
+                      <GridCardPreview modelUrl={gf.modelUrl} gender={gf.gender} />
                     )}
                   </div>
                   <div className="flex items-start justify-between gap-1">
@@ -169,10 +161,6 @@ export default function PartnersPage() {
               <p className="text-slate-500 text-xs leading-relaxed mb-4">{selected.backstory}</p>
             )}
 
-            {/* Model file info */}
-            {selected.modelUrl && (
-              <div className="text-[9px] text-slate-600 font-mono mb-3 truncate">Model: {selected.modelUrl}</div>
-            )}
 
             <div className="flex gap-2">
               {selected.isStarter ? (
@@ -189,6 +177,85 @@ export default function PartnersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// ── Grid Card Preview (lightweight — renders model in small canvas) ───────────
+
+function GridCardPreview({ modelUrl, gender }: { modelUrl: string; gender: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !modelUrl) return;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+    renderer.setPixelRatio(1); // low quality for grid performance
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(35, 3 / 4, 0.01, 100);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 2.5));
+    const key = new THREE.DirectionalLight(0xfff4e0, 2.5); key.position.set(1, 3, 2); scene.add(key);
+    scene.add(new THREE.DirectionalLight(0xaabbff, 1.0)).position.set(-2, 1, 1);
+
+    const dracoLoader = new DRACOLoader(); dracoLoader.setDecoderPath("/draco/");
+    const loader = new GLTFLoader(); loader.setDRACOLoader(dracoLoader);
+
+    let model: THREE.Group | null = null;
+    let rafId: number;
+    let rotY = 0.3; // slight angle so it's not straight-on
+
+    loader.load(modelUrl, (gltf) => {
+      model = gltf.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const scale = 2.0 / Math.max(size.x, size.y, size.z);
+      model.scale.setScalar(scale);
+      model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+      model.rotation.y = rotY;
+      scene.add(model);
+      const h = size.y * scale;
+      camera.position.set(0, h * 0.45, h * 1.5);
+      camera.lookAt(0, h * 0.4, 0);
+
+      // Just render a few frames then stop (save GPU)
+      let frames = 0;
+      function renderLoop() {
+        if (frames > 30) return; // stop after 30 frames (~0.5s)
+        rafId = requestAnimationFrame(renderLoop);
+        frames++;
+        if (model) { rotY += 0.02; model.rotation.y = rotY; }
+        const W = canvas!.clientWidth, H = canvas!.clientHeight;
+        if (W > 0 && H > 0) { renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); }
+        renderer.render(scene, camera);
+      }
+      renderLoop();
+      setLoaded(true);
+    });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      renderer.dispose();
+      dracoLoader.dispose();
+      scene.clear();
+    };
+  }, [modelUrl]);
+
+  return (
+    <>
+      <canvas ref={canvasRef} className="w-full h-full block" style={{ opacity: loaded ? 1 : 0, transition: "opacity 0.8s ease" }} />
+      {!loaded && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-xl animate-pulse">{gender === "female" ? "👩" : "👨"}</div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -237,8 +304,10 @@ function MiniModelViewer({ url }: { url: string }) {
       model.scale.setScalar(scale);
       model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
       scene.add(model);
-      camera.position.set(0, size.y * scale * 0.42, size.y * scale * 1.1);
-      camera.lookAt(0, size.y * scale * 0.42, 0);
+      // Frame the full body — camera centered on model, pulled back enough to see head to toe
+      const scaledH = size.y * scale;
+      camera.position.set(0, scaledH * 0.45, scaledH * 1.4);
+      camera.lookAt(0, scaledH * 0.4, 0);
       if (gltf.animations.length > 0) {
         mixer = new THREE.AnimationMixer(model);
         mixer.clipAction(gltf.animations[0]).play();
