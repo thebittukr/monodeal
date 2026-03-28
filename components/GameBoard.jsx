@@ -1,8 +1,5 @@
 "use client";
 import { useState, useCallback, useEffect, useRef } from "react";
-import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import Card from "./Card";
 import AssetDisplay from "./AssetDisplay";
 import ActionModal from "./ActionModal";
@@ -522,66 +519,6 @@ function LoadingScreen() {
 }
 
 // ── 3D Model Canvas (for winner overlay) ─────────────────────────────────────
-function ModelCanvas({ url, width, height, spinDir = 1 }) {
-  const canvasRef = useRef(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(42, width / height, 0.01, 100);
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmrem.fromScene(new THREE.Scene()).texture;
-    pmrem.dispose();
-
-    scene.add(new THREE.AmbientLight(0xffffff, 3.0));
-    const key = new THREE.DirectionalLight(0xfff4e0, 3.0); key.position.set(1.5, 3, 2); scene.add(key);
-    const fill = new THREE.DirectionalLight(0xaabbff, 1.2); fill.position.set(-2, 1, 1); scene.add(fill);
-    scene.add(new THREE.DirectionalLight(0xffffff, 1.0)).position.set(0, 2, -3);
-
-    const dracoLoader = new DRACOLoader(); dracoLoader.setDecoderPath('/draco/');
-    const loader = new GLTFLoader(); loader.setDRACOLoader(dracoLoader);
-
-    let mixer = null, model = null, rafId = null, rotY = 0;
-    loader.load(url, (gltf) => {
-      model = gltf.scene;
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
-      const scale = 2.0 / Math.max(size.x, size.y, size.z);
-      model.scale.setScalar(scale);
-      model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
-      scene.add(model);
-      // Frame full body — camera pulled back enough to see head to toe
-      camera.position.set(0, size.y * scale * 0.45, size.y * scale * 1.5);
-      camera.lookAt(0, size.y * scale * 0.42, 0);
-      if (gltf.animations.length > 0) { mixer = new THREE.AnimationMixer(model); mixer.clipAction(gltf.animations[0]).play(); }
-      setVisible(true);
-    });
-
-    const clock = new THREE.Clock();
-    function animate() {
-      rafId = requestAnimationFrame(animate);
-      const dt = clock.getDelta();
-      if (mixer) mixer.update(dt);
-      if (model) { rotY += dt * 0.25 * spinDir; model.rotation.y = rotY; }
-      renderer.setSize(canvas.clientWidth || width, canvas.clientHeight || height, false);
-      renderer.render(scene, camera);
-    }
-    animate();
-    return () => { cancelAnimationFrame(rafId); renderer.dispose(); dracoLoader.dispose(); scene.clear(); };
-  }, [url]); // eslint-disable-line
-
-  return <canvas ref={canvasRef} style={{ display: 'block', width, height, opacity: visible ? 1 : 0, transition: 'opacity 1.5s ease' }} />;
-}
 
 // ── Winner Overlay ───────────────────────────────────────────────────────────
 function WinnerOverlay({ winnerName, isMe, fairnessProof, onPlayAgain }) {
@@ -623,8 +560,8 @@ function WinnerOverlay({ winnerName, isMe, fairnessProof, onPlayAgain }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95">
       {/* 3D Models — dates celebrating */}
-      <div className="hidden sm:block absolute right-4 bottom-0 pointer-events-none" style={{maxHeight:"70vh"}}><ModelCanvas url="/models/skye.glb" width={200} height={450} spinDir={1} /></div>
-      <div className="hidden md:block absolute left-4 bottom-0 pointer-events-none" style={{maxHeight:"70vh"}}><ModelCanvas url="/models/crimson.glb" width={180} height={400} spinDir={-1} /></div>
+      <div className="hidden sm:block absolute right-4 bottom-0 pointer-events-none" style={{maxHeight:"70vh",width:180}}><div style={{background:"white",borderRadius:16,overflow:"hidden"}}><img src="https://pub-3b44ace66a3b4c17af6fa229197f3026.r2.dev/dates/strawberry.gif" alt="" style={{width:"100%",display:"block"}} /></div></div>
+      
 
       {/* Result Card */}
       <div className="relative z-10 bg-slate-900/95 border border-white/10 rounded-2xl p-8 text-center shadow-2xl max-w-sm w-full mx-4">
