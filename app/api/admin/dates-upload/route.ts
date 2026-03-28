@@ -1,16 +1,15 @@
 /**
  * Admin Date Upload API
- * Accepts any file (MP4, PNG, GIF, JPG) — saves directly, no conversion
+ * Compresses images with sharp → stores in DB as base64 data URL
+ * No filesystem dependency — works on Railway
  */
 
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { db, schema } from "@/lib/db";
-import { writeFile, mkdir, readdir, unlink } from "fs/promises";
-import { join } from "path";
+import sharp from "sharp";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").filter(Boolean);
-const DATES_DIR = join(process.cwd(), "public", "dates");
 
 export async function POST(req: Request) {
   try {
@@ -25,12 +24,6 @@ export async function POST(req: Request) {
     if (action === "delete_all") {
       await db.delete(schema.userGirlfriends);
       await db.delete(schema.girlfriends);
-      try {
-        const files = await readdir(DATES_DIR);
-        for (const f of files) {
-          if (!f.startsWith(".")) await unlink(join(DATES_DIR, f)).catch(() => {});
-        }
-      } catch {}
       return NextResponse.json({ ok: true, message: "All dates deleted" });
     }
 
@@ -50,22 +43,37 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "File and name required" }, { status: 400 });
       }
 
-      const slug = name.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
-      const ext = file.name?.split(".").pop()?.toLowerCase() || "mp4";
-      const filename = `${slug}.${ext}`;
-
-      await mkdir(DATES_DIR, { recursive: true });
       const buffer = Buffer.from(await file.arrayBuffer());
-      await writeFile(join(DATES_DIR, filename), buffer);
+      const isGif = file.type === "image/gif" || file.name?.endsWith(".gif");
 
-      const fileUrl = `/dates/${filename}`;
-      const isVideo = ext === "mp4" || ext === "webm";
+      let compressed: Buffer;
+      let mimeType: string;
+
+      if (isGif) {
+        // GIFs: resize only, keep animation (sharp preserves animated GIF)
+        compressed = await sharp(buffer, { animated: true })
+          .resize(400, 400, { fit: "inside", withoutEnlargement: true })
+          .gif({ effort: 7 })
+          .toBuffer();
+        mimeType = "image/gif";
+      } else {
+        // PNG/JPG: compress to WebP for smallest size
+        compressed = await sharp(buffer)
+          .resize(500, 500, { fit: "inside", withoutEnlargement: true })
+          .webp({ quality: 80 })
+          .toBuffer();
+        mimeType = "image/webp";
+      }
+
+      // Store as data URL in thumbnailUrl field
+      const dataUrl = `data:${mimeType};base64,${compressed.toString("base64")}`;
+      const sizeKB = Math.round(compressed.length / 1024);
 
       const [created] = await db.insert(schema.girlfriends).values({
         name,
         rarity: rarity as any,
-        modelUrl: isVideo ? fileUrl : "",
-        thumbnailUrl: isVideo ? "" : fileUrl,
+        modelUrl: "",
+        thumbnailUrl: dataUrl,
         priceCredits,
         style: style as any,
         gender: gender as any,
@@ -75,7 +83,11 @@ export async function POST(req: Request) {
         backstory: backstory || null,
       }).returning();
 
-      return NextResponse.json({ ok: true, girlfriend: created, fileUrl });
+      return NextResponse.json({
+        ok: true,
+        girlfriend: { ...created, thumbnailUrl: `[${sizeKB}KB data URL]` },
+        sizeKB,
+      });
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
