@@ -183,13 +183,15 @@ function CharacterStage({ slots, positions }) {
         const ctr   = box.getCenter(new THREE.Vector3());
         const sc    = 2.0 / Math.max(size.x, size.y, size.z);
         model.scale.setScalar(sc);
-        model.position.set(-ctr.x * sc, -ctr.y * sc + size.y * sc * 0.05, -ctr.z * sc);
+        // Position model so feet are at the bottom of the viewport
+        model.position.set(-ctr.x * sc, -box.min.y * sc, -ctr.z * sc);
         cd.scene.add(model);
         cd.model = model;
 
         const sh = size.y * sc;
-        cd.camera.position.set(0, sh * 0.42, sh * 1.1);
-        cd.camera.lookAt(0, sh * 0.42, 0);
+        // Camera pulled back far enough to see full body in narrow viewport
+        cd.camera.position.set(0, sh * 0.5, sh * 2.0);
+        cd.camera.lookAt(0, sh * 0.45, 0);
 
         if (gltf.animations.length > 0) {
           cd.mixer = new THREE.AnimationMixer(model);
