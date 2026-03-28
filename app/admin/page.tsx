@@ -314,10 +314,10 @@ function DatesTab({ onError }: { onError: (e: string) => void }) {
 
   async function upload() {
     if (!videoFile || !form.name) { setUploadMsg("Need video file and name"); return; }
-    setUploading(true); setUploadMsg("Converting green screen → transparent PNG...");
+    setUploading(true); setUploadMsg("Uploading image...");
     const fd = new FormData();
     fd.append("action", "upload");
-    fd.append("video", videoFile);
+    fd.append("image", videoFile);
     fd.append("name", form.name);
     fd.append("rarity", form.rarity);
     fd.append("style", form.style);
@@ -353,10 +353,10 @@ function DatesTab({ onError }: { onError: (e: string) => void }) {
       {showForm && (
         <div className="bg-black/20 rounded-xl p-4 mb-4 space-y-3">
           <div className="bg-violet-900/20 border border-violet-500/20 rounded-lg p-3">
-            <p className="text-xs text-violet-300 font-bold mb-2">Upload green screen MP4</p>
-            <input type="file" accept="video/mp4" onChange={e => setVideoFile(e.target.files?.[0] || null)}
+            <p className="text-xs text-violet-300 font-bold mb-2">Upload character (PNG/GIF or green screen MP4)</p>
+            <input type="file" accept="image/png,image/gif,.apng,video/mp4" onChange={e => setVideoFile(e.target.files?.[0] || null)}
               className="text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-violet-600 file:text-white file:text-xs file:font-bold file:cursor-pointer" />
-            <p className="text-[9px] text-slate-600 mt-1">MP4 with green (#00FF00) background → auto-converts to transparent APNG</p>
+            <p className="text-[9px] text-slate-600 mt-1">PNG/GIF (transparent bg) or MP4 (green screen — auto-converts locally). Stored in Vercel Blob.</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <Inp label="Name" value={form.name} set={v => setForm({...form, name: v})} />
