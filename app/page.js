@@ -142,16 +142,16 @@ export default function HomePage() {
             Beat opponents. Collect 3 sets. Take the pot.
           </p>
 
-          {/* QUICK MATCH — the #1 conversion button */}
+          {/* QUICK MATCH — creates a room, waits for players, fills with bots after 60s */}
           <button
             onClick={() => {
-              const quickName = name.trim() || `Player${Math.floor(Math.random() * 999)}`;
+              const quickName = name.trim() || (isLoggedIn ? (profile?.username || user?.name) : `Player${Math.floor(Math.random() * 999)}`);
               setName(quickName);
               localStorage.setItem("pr_avatar", avatarId.toString());
               setLoading(true);
               fetch("/api/game", {
                 method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "createSoloRoom", playerName: quickName, avatarId }),
+                body: JSON.stringify({ action: "createRoom", playerName: quickName, maxPlayers: 4, avatarId }),
               })
                 .then(r => r.json())
                 .then(data => {
@@ -166,9 +166,9 @@ export default function HomePage() {
             disabled={loading}
             className="mt-5 px-10 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-black text-lg transition-all shadow-xl shadow-emerald-500/25 hover:shadow-emerald-400/30 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
           >
-            {loading ? "Starting..." : "Play Now"}
+            {loading ? "Finding match..." : "Play Now"}
           </button>
-          <p className="text-slate-600 text-[10px] mt-1.5">Instant match vs bots &middot; no signup needed</p>
+          <p className="text-slate-600 text-[10px] mt-1.5">Find a match &middot; bots fill in if needed</p>
 
           {/* Feature pills */}
           <div className="flex flex-wrap gap-2 mt-4 justify-center">
@@ -327,18 +327,9 @@ export default function HomePage() {
                 {loading ? "Loading..." : tab === "create" ? "Create Room" : "Join Game"}
               </button>
 
-              <div className="relative my-4">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5" /></div>
-                <div className="relative flex justify-center"><span className="px-3 bg-slate-900/80 text-slate-600 text-[10px] uppercase tracking-widest">or play instantly</span></div>
-              </div>
-
-              <button
-                onClick={handleSolo}
-                disabled={loading}
-                className="w-full py-3 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold text-sm transition-all"
-              >
-                Play Solo vs 3 Bots
-              </button>
+              <p className="text-center text-slate-700 text-[9px] mt-3">
+                Rooms fill with real players. If no one joins within 60 seconds, bots join automatically.
+              </p>
             </div>
           </div>
 

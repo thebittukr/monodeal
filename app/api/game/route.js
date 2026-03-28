@@ -30,6 +30,17 @@ export async function GET(req) {
   const room = await getRoom(roomId);
   if (!room)  return err("Room not found", 404);
 
+  // Trigger delayed bot moves on each state poll (bots "think" then act)
+  if (room.phase === "playing") {
+    const before = JSON.stringify(room._botMoveAt);
+    runBotTurns(room);
+    const after = JSON.stringify(room._botMoveAt);
+    // Save only if state changed (bot moved or new timer scheduled)
+    if (before !== after || !room._botMoveAt) {
+      await setRoom(roomId, room);
+    }
+  }
+
   return ok(playerId ? sanitizeState(room, playerId) : room);
 }
 
@@ -111,6 +122,37 @@ export async function POST(req) {
       runBotTurns(room);
       await setRoom(roomId, room);
       return ok({ roomId, playerId });
+    }
+
+    // ── fillBotsAndStart (auto-fill after 60s wait) ───────────────────────
+    case "fillBotsAndStart": {
+      const { roomId, playerId } = body;
+      if (!roomId || !playerId) return err("roomId and playerId required", 400);
+
+      const room = await getRoom(roomId);
+      if (!room) return err("Room not found", 404);
+      if (room.phase !== "waiting") return err("Game already started", 400);
+      if (room.hostId !== playerId) return err("Only host can fill bots", 403);
+
+      // Import bot pool from game engine
+      const { pickRandomBots, makeBot } = await import("@/lib/gameEngine");
+
+      // Fill remaining seats with bots
+      const cap = room.roomMaxPlayers ?? 4;
+      const needed = cap - room.players.length;
+      if (needed > 0) {
+        const bots = pickRandomBots(needed);
+        for (const botDef of bots) {
+          room.players.push(makeBot(botDef));
+        }
+      }
+
+      // Start the game
+      const { forceStart: fs } = await import("@/lib/gameEngine");
+      fs(room, playerId);
+      runBotTurns(room);
+      await setRoom(roomId, room);
+      return ok({ ok: true });
     }
 
     default:
