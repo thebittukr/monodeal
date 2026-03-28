@@ -168,7 +168,7 @@ export default function HomePage() {
           >
             {loading ? "Finding match..." : "Play Now"}
           </button>
-          <p className="text-slate-600 text-[10px] mt-1.5">Find a match &middot; bots fill in if needed</p>
+          <p className="text-slate-600 text-[10px] mt-1.5">Instant match &middot; no signup needed</p>
 
           {/* Feature pills */}
           <div className="flex flex-wrap gap-2 mt-4 justify-center">
@@ -328,7 +328,7 @@ export default function HomePage() {
               </button>
 
               <p className="text-center text-slate-700 text-[9px] mt-3">
-                Rooms fill with real players. If no one joins within 60 seconds, bots join automatically.
+                Games start when players join. Share room code to play with friends.
               </p>
             </div>
           </div>

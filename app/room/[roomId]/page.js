@@ -298,9 +298,9 @@ export default function RoomPage() {
             <div className={`w-2 h-2 rounded-full ${reconnecting ? "bg-yellow-400" : "bg-emerald-400"} animate-pulse`} />
             <span className="text-slate-400 text-xs">
               {reconnecting ? "Reconnecting…" :
-               waitSeconds >= 60 ? "Filling with bots..." :
-               waitSeconds > 0 ? `Waiting for players (${60 - waitSeconds}s) then bots join` :
-               `Auto-starts when all ${cap} players join`}
+               waitSeconds >= 60 ? "Starting game..." :
+               waitSeconds > 0 ? `Finding players... (${60 - waitSeconds}s)` :
+               `Waiting for ${cap} players to join`}
             </span>
           </div>
 

@@ -167,7 +167,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
   // ══════════════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden bg-slate-950">
+    <div className="flex flex-col h-full w-full overflow-hidden">
 
       {/* ── Modals (all game logic modals — preserved exactly) ──────────── */}
       {state.phase === "ended" && (

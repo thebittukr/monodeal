@@ -1,8 +1,19 @@
 "use client";
 import { useAuth } from "@/lib/useAuth";
+import { useState } from "react";
 
 export default function Nav() {
   const { user, profile, credits, loading } = useAuth();
+  const [showMenu, setShowMenu] = useState(false);
+
+  async function handleSignOut() {
+    try {
+      await fetch("/api/auth/sign-out", { method: "POST" });
+      window.location.href = "/";
+    } catch {
+      window.location.href = "/";
+    }
+  }
 
   return (
     <nav className="relative z-20 flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/5">
@@ -20,7 +31,7 @@ export default function Nav() {
             <NavLink href="/credits">
               Credits{credits ? ` (${credits.balance})` : ""}
             </NavLink>
-            <NavLink href="/profile">Profile</NavLink>
+            <NavLink href="/wallet">Wallet</NavLink>
           </>
         )}
 
@@ -29,12 +40,38 @@ export default function Nav() {
         {loading ? (
           <div className="w-16 h-7 rounded-full bg-white/5 animate-pulse ml-2" />
         ) : user ? (
-          <a href="/profile" className="ml-2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-600/20 border border-violet-500/30 hover:bg-violet-600/30 transition text-xs">
-            <div className="w-5 h-5 rounded-full bg-violet-600 flex items-center justify-center text-[9px] font-bold text-white">
-              {(profile?.username || user.name || "?")[0].toUpperCase()}
-            </div>
-            <span className="text-violet-300 font-medium hidden sm:block">{profile?.username || user.name}</span>
-          </a>
+          <div className="relative ml-2">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-600/20 border border-violet-500/30 hover:bg-violet-600/30 transition text-xs"
+            >
+              <div className="w-5 h-5 rounded-full bg-violet-600 flex items-center justify-center text-[9px] font-bold text-white">
+                {(profile?.username || user.name || "?")[0].toUpperCase()}
+              </div>
+              <span className="text-violet-300 font-medium hidden sm:block">{profile?.username || user.name}</span>
+              <span className="text-violet-500 text-[8px]">▼</span>
+            </button>
+
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-slate-900 border border-white/10 rounded-xl shadow-2xl py-1 overflow-hidden">
+                  <a href="/profile" className="block px-4 py-2.5 text-xs text-slate-300 hover:bg-white/5 transition">Profile & Stats</a>
+                  <a href="/wallet" className="block px-4 py-2.5 text-xs text-slate-300 hover:bg-white/5 transition">Wallet</a>
+                  <a href="/credits" className="block px-4 py-2.5 text-xs text-slate-300 hover:bg-white/5 transition">Credits</a>
+                  <a href="/partners" className="block px-4 py-2.5 text-xs text-slate-300 hover:bg-white/5 transition">My Dates</a>
+                  <div className="border-t border-white/5 my-1" />
+                  <div className="px-4 py-1.5 text-[9px] text-slate-600">{user.email}</div>
+                  <button
+                    onClick={handleSignOut}
+                    className="block w-full text-left px-4 py-2.5 text-xs text-red-400 hover:bg-red-500/10 transition"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         ) : (
           <a href="/login" className="ml-2 px-4 py-1.5 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition">
             Sign In
