@@ -101,7 +101,7 @@ export default function PartnersPage() {
                 <button key={gf.id} onClick={() => setSelected(gf)}
                   className={`${rc.bg} border ${rc.border} rounded-2xl p-3 sm:p-4 text-left hover:scale-[1.02] transition-all group shadow-lg ${rc.glow}`}>
                   {/* Static card — NO WebGL, just styled placeholder */}
-                  <div className="aspect-[3/4] bg-gradient-to-b from-slate-700/30 to-black/40 rounded-xl mb-3 flex flex-col items-center justify-center gap-2 relative overflow-hidden">
+                  <div className="aspect-square bg-gradient-to-b from-slate-700/30 to-black/40 rounded-xl mb-3 flex flex-col items-center justify-center gap-2 relative overflow-hidden">
                     {gf.thumbnailUrl ? (
                       <img src={gf.thumbnailUrl} alt={gf.name} className="w-full h-full object-contain" style={{}} />
                     ) : (
@@ -133,7 +133,7 @@ export default function PartnersPage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setSelected(null)}>
           <div className="bg-slate-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
             {/* 3D Model (dynamically loaded) */}
-            <div className="w-full h-[400px] sm:h-[500px] bg-black/50 rounded-t-2xl overflow-hidden relative">
+            <div className="w-full aspect-square bg-black/50 rounded-t-2xl overflow-hidden relative">
               {selected.thumbnailUrl ? (
                 <img src={selected.thumbnailUrl} alt={selected.name} className="w-full h-full object-contain" />
               ) : (

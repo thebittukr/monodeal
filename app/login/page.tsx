@@ -14,13 +14,21 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const result = await authClient.signIn.email({ email, password });
-      if (result?.error) {
-        setError(result.error.message || "Login failed");
+      // Use direct API call for reliable cookie handling
+      const res = await fetch("/api/auth/sign-in/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.code) {
+        setError(data.message || "Invalid email or password");
         setLoading(false);
         return;
       }
-      // Check if admin — redirect appropriately
+      // Small delay for cookie to set
+      await new Promise(r => setTimeout(r, 300));
+      // Check if admin
       try {
         const profile = await fetch("/api/profile").then(r => r.json());
         if (profile?.isAdmin) {
