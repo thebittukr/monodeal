@@ -67,7 +67,7 @@ export default function CasinoBackground({
           : `radial-gradient(ellipse 70% 50% at 15% 100%, ${c1}30 0%, transparent 55%), radial-gradient(ellipse 70% 50% at 85% 100%, ${c2}30 0%, transparent 55%), linear-gradient(180deg, #010108 0%, #04010e 60%, #080018 100%)`,
       }} />
 
-      <div className="hidden sm:block" style={{ position: "fixed", bottom: 0, right: 0, zIndex: 18, pointerEvents: "none", width: 280 }}>
+      <div className="hidden sm:block" style={{ position: "fixed", bottom: 0, right: 0, zIndex: 25, pointerEvents: "none", width: 280 }}>
         <img src="/dates/crimson.gif" alt="" style={{ width: "100%", }} />
         {showBubble && (
           <div style={{
@@ -81,7 +81,7 @@ export default function CasinoBackground({
         )}
       </div>
 
-      <div className="sm:hidden" style={{ position: "fixed", bottom: 0, right: -10, zIndex: 18, pointerEvents: "none", width: 120 }}>
+      <div className="sm:hidden" style={{ position: "fixed", bottom: 0, right: -10, zIndex: 25, pointerEvents: "none", width: 120 }}>
         <img src="/dates/crimson.gif" alt="" style={{ width: "100%", }} />
       </div>
     </div>
