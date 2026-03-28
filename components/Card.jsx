@@ -71,7 +71,7 @@ function PropertyCard({ card, small, selected, dimmed, onClick }) {
       onClick={onClick}
       className={`flex flex-col flex-shrink-0 select-none cursor-pointer rounded-xl overflow-hidden shadow-2xl
         transition-all duration-150 card-3d
-        ${small ? "w-10 h-14" : "w-[72px] h-[104px]"}
+        ${small ? "w-[42px] h-[59px]" : "w-[75px] h-[105px]"}
         ${selected ? "card-3d-selected ring-2 ring-yellow-300 ring-offset-1" : ""}
         ${dimmed ? "opacity-40 pointer-events-none" : ""}
       `}
@@ -136,7 +136,7 @@ function WildPropertyCard({ card, small, selected, dimmed, onClick }) {
       onClick={onClick}
       className={`flex flex-col flex-shrink-0 select-none cursor-pointer rounded-xl overflow-hidden shadow-2xl
         transition-all duration-150 card-3d
-        ${small ? "w-10 h-14" : "w-[72px] h-[104px]"}
+        ${small ? "w-[42px] h-[59px]" : "w-[75px] h-[105px]"}
         ${selected ? "card-3d-selected ring-2 ring-white ring-offset-1" : ""}
         ${dimmed ? "opacity-40 pointer-events-none" : ""}
       `}
@@ -186,7 +186,7 @@ function MoneyCard({ card, small, selected, dimmed, onClick }) {
       onClick={onClick}
       className={`flex flex-col flex-shrink-0 select-none cursor-pointer rounded-xl overflow-hidden shadow-2xl
         transition-all duration-150 card-3d relative
-        ${small ? "w-10 h-14" : "w-[72px] h-[104px]"}
+        ${small ? "w-[42px] h-[59px]" : "w-[75px] h-[105px]"}
         ${selected ? "card-3d-selected ring-2 ring-yellow-300 ring-offset-1" : ""}
         ${dimmed ? "opacity-40 pointer-events-none" : ""}
       `}
@@ -269,7 +269,7 @@ function ActionCard({ card, small, selected, dimmed, onClick }) {
       onClick={onClick}
       className={`flex flex-col flex-shrink-0 select-none cursor-pointer rounded-xl overflow-hidden shadow-2xl
         transition-all duration-150 card-3d bg-gradient-to-br ${theme.grad}
-        ${small ? "w-10 h-14" : "w-[72px] h-[104px]"}
+        ${small ? "w-[42px] h-[59px]" : "w-[75px] h-[105px]"}
         ${selected ? "card-3d-selected ring-2 ring-white ring-offset-1" : ""}
         ${dimmed ? "opacity-40 pointer-events-none" : ""}
       `}
@@ -327,7 +327,7 @@ function ActionCard({ card, small, selected, dimmed, onClick }) {
 function HiddenCard({ small }) {
   return (
     <div className={`flex-shrink-0 rounded-xl overflow-hidden shadow-lg
-      ${small ? "w-10 h-14" : "w-[72px] h-[104px]"}
+      ${small ? "w-[42px] h-[59px]" : "w-[75px] h-[105px]"}
     `}
       style={{
         background:'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',

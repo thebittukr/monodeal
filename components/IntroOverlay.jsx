@@ -9,15 +9,8 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 
-// ── Model pool (same as CasinoBackground) ─────────────────────────────────────
-const INTRO_MODELS = [
-  "/models/leggings.glb",
-  "/models/kimberly.glb",
-  "/models/helen.glb",
-  "/models/skye.glb",
-  "/models/hips.glb",
-  "/models/crimson.glb",
-];
+// ── Default model: Crimson. If player has an equipped date, use that instead.
+const DEFAULT_INTRO_MODEL = "/models/crimson.glb";
 
 // ── Hype lines the girl can say ────────────────────────────────────────────────
 const HYPE_LINES = [
@@ -157,9 +150,9 @@ function speakLine(text) {
 }
 
 // ── Main export ────────────────────────────────────────────────────────────────
-export default function IntroOverlay({ onDone }) {
+export default function IntroOverlay({ onDone, equippedDateModelUrl }) {
   const [line]        = useState(() => HYPE_LINES[Math.floor(Math.random() * HYPE_LINES.length)]);
-  const [modelUrl]    = useState(() => INTRO_MODELS[Math.floor(Math.random() * INTRO_MODELS.length)]);
+  const [modelUrl]    = useState(() => equippedDateModelUrl || DEFAULT_INTRO_MODEL);
   const [showBubble,  setShowBubble]  = useState(false);
   const [progress,    setProgress]    = useState(0);   // 0→100 in 4 s
   const doneRef = useRef(false);

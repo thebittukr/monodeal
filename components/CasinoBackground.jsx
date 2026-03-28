@@ -287,21 +287,7 @@ function CharacterBubble({ charIndex, playerName, posLeft, bubbleDelayMs, gameAc
     return () => clearTimeout(t);
   }, [forceReactLine]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (!gameActive) return;
-    let showT, hideT, cycleT;
-    function showLine() {
-      const pool = Math.random() < 0.55 ? HYPE_LINES : SASSY_LINES;
-      const line = pool[Math.floor(Math.random() * pool.length)];
-      setBubble(line);
-      setShowBubble(true);
-      narrateCharacter(line, charIndex);
-      hideT  = setTimeout(() => setShowBubble(false), 4500);
-      cycleT = setTimeout(showLine, 32000 + Math.random() * 22000);
-    }
-    showT = setTimeout(showLine, bubbleDelayMs);
-    return () => { clearTimeout(showT); clearTimeout(hideT); clearTimeout(cycleT); };
-  }, [gameActive, bubbleDelayMs, charIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+  // No random chatter — date only reacts to game events via forceReactLine
 
   return (
     <div style={{
@@ -357,23 +343,13 @@ export default function CasinoBackground({
   const [lossSlot,         setLossSlot]          = useState(-1);
   const [lossLine,         setLossLine]          = useState('');
 
-  // Stable random shuffle of CHAR_POOL — computed once per mount so each
-  // session assigns a unique, different girl to every player slot.
-  const shuffleRef = useRef(null);
-  if (!shuffleRef.current) {
-    shuffleRef.current = [...CHAR_POOL]
-      .map((c, i) => ({ c, sort: Math.random() + i * 0.001 }))
-      .sort((a, b) => a.sort - b.sort)
-      .map(x => x.c);
-  }
-  const shuffled = shuffleRef.current;
+  // Always show Crimson as the default date — only ONE model loaded for performance.
+  // When player has an equipped date, that model URL would be passed in instead.
+  const DEFAULT_MODEL = '/models/crimson.glb';
 
-  // Always show exactly ONE girl — randomly picked per session.
-  // On home page use the first shuffled model; in-game use the slot
-  // matching the first (human) player's index for consistency.
   const singleSlot = players.length > 0
-    ? { url: shuffled[0].url, playerName: players[0]?.name ?? '', charIndex: 0, bubbleDelayMs: 8000 }
-    : { url: shuffled[0].url, playerName: '', charIndex: 0, bubbleDelayMs: 9000 };
+    ? { url: DEFAULT_MODEL, playerName: players[0]?.name ?? '', charIndex: 0, bubbleDelayMs: 8000 }
+    : { url: DEFAULT_MODEL, playerName: '', charIndex: 0, bubbleDelayMs: 9000 };
 
   const displaySlots     = [singleSlot];
   const displayPositions = [92]; // right edge — always fully visible, never hides game UI

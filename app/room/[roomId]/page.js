@@ -6,6 +6,7 @@ import CasinoBackground from "@/components/CasinoBackground";
 import MusicPlayer from "@/components/MusicPlayer";
 import { getMusicPlayer } from "@/lib/pixabayMusic";
 import { setNarratorEnabled } from "@/lib/narrator";
+import { useAuth } from "@/lib/useAuth";
 
 const POLL_INTERVAL       = 2000;  // 2 s — halves Redis usage, still fast enough
 const MAX_PLAYERS         = 4;
@@ -17,6 +18,12 @@ const RETRY_BASE_MS       = 600;   // backoff base (600 ms, 1200 ms, 1800 ms)
 export default function RoomPage() {
   const { roomId } = useParams();
   const router     = useRouter();
+  const { isAdmin } = useAuth();
+
+  // Admins can't play — redirect to admin dashboard
+  useEffect(() => {
+    if (isAdmin) router.push("/admin");
+  }, [isAdmin, router]);
 
   const [myId,            setMyId]            = useState(null);
   const [state,           setState]           = useState(null);
@@ -190,13 +197,43 @@ export default function RoomPage() {
   // ─────────────────────────────────────────────────────────────────────────
   // WAITING ROOM
   // ─────────────────────────────────────────────────────────────────────────
+
+  // Auto-fill with bots after 60 seconds
+  const [waitSeconds, setWaitSeconds] = useState(0);
+  const autoFillRef = useRef(false);
+
+  useEffect(() => {
+    if (!state || state.phase !== "waiting" || !myId) return;
+    const isHost = state.hostId === myId;
+    if (!isHost) return;
+
+    const timer = setInterval(() => {
+      setWaitSeconds(s => s + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [state?.phase, state?.hostId, myId]);
+
+  // Trigger auto-fill at 60 seconds
+  useEffect(() => {
+    if (waitSeconds >= 60 && state?.phase === "waiting" && state?.hostId === myId && !autoFillRef.current) {
+      autoFillRef.current = true;
+      // Fill remaining seats with bots and start
+      fetch("/api/game", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "fillBotsAndStart", roomId, playerId: myId }),
+      }).catch(() => {});
+    }
+  }, [waitSeconds]); // eslint-disable-line
+
   if (!state || state.phase === "waiting") {
     const cap     = state?.roomMaxPlayers ?? MAX_PLAYERS;
     const joined  = state?.players?.length ?? 1;
     const needed  = cap - joined;
     const players = state?.players ?? [];
     const isHost   = state?.hostId === myId;
-    const canStart = isHost && joined >= 2 && joined < cap; // only for early start; full room auto-starts
+    const canStart = isHost && joined >= 2 && joined < cap;
 
     const handleStart = async () => {
       try {
@@ -267,7 +304,10 @@ export default function RoomPage() {
           <div className="flex items-center gap-2 justify-center">
             <div className={`w-2 h-2 rounded-full ${reconnecting ? "bg-yellow-400" : "bg-emerald-400"} animate-pulse`} />
             <span className="text-slate-400 text-xs">
-              {reconnecting ? "Reconnecting…" : `Auto-starts when all ${cap} players join`}
+              {reconnecting ? "Reconnecting…" :
+               waitSeconds >= 60 ? "Starting game..." :
+               waitSeconds > 0 ? `Finding players... (${60 - waitSeconds}s)` :
+               `Waiting for ${cap} players to join`}
             </span>
           </div>
 

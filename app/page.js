@@ -6,54 +6,44 @@ import { CITY_CONFIGS } from "@/components/CasinoBackground";
 import AvatarPicker from "@/components/AvatarPicker";
 import { DEFAULT_AVATAR_ID } from "@/lib/avatars";
 import dynamic from "next/dynamic";
+import Nav from "@/components/Nav";
+import { useAuth } from "@/lib/useAuth";
 
-// Load intro overlay only client-side (needs WebGL)
 const IntroOverlay = dynamic(() => import("@/components/IntroOverlay"), { ssr: false });
-
-const COLOR_PILLS = [
-  { color: "#ef4444" }, { color: "#3b82f6" }, { color: "#22c55e" },
-  { color: "#eab308" }, { color: "#a855f7" }, { color: "#f97316" },
-];
 
 export default function HomePage() {
   const router = useRouter();
-  const [tab,        setTab]        = useState("create");
-  const [name,       setName]       = useState("");
-  const [roomId,     setRoomId]     = useState("");
-  const [maxPlayers, setMaxPlayers] = useState(4);
-  const [loading,    setLoading]    = useState(false);
-  const [err,        setErr]        = useState("");
-  const [activeGame, setActiveGame] = useState(null); // { roomId, playerId, phase }
-  const [city,       setCity]       = useState("lasvegas");
-  const [avatarId,   setAvatarId]   = useState(DEFAULT_AVATAR_ID);
-  // pendingRoom: set after API succeeds, triggers intro overlay before navigating
-  const [pendingRoom, setPendingRoom] = useState(null); // { roomId, playerId }
+  const { user, profile, isAdmin } = useAuth();
 
-  // ── Check localStorage for an active game to rejoin ─────────────────────
+  // Admins are redirected to admin dashboard — they can't play
+  useEffect(() => {
+    if (isAdmin) router.push("/admin");
+  }, [isAdmin, router]);
+  const [tab, setTab] = useState("create");
+  const [name, setName] = useState("");
+  const [roomId, setRoomId] = useState("");
+  const [maxPlayers, setMaxPlayers] = useState(4);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const [activeGame, setActiveGame] = useState(null);
+  const [city, setCity] = useState("lasvegas");
+  const [avatarId, setAvatarId] = useState(DEFAULT_AVATAR_ID);
+  const [pendingRoom, setPendingRoom] = useState(null);
+  const [showCities, setShowCities] = useState(false);
+
   useEffect(() => {
     const entries = Object.entries(localStorage)
       .filter(([k]) => k.startsWith("pr_") && k.endsWith("_pid"));
-
     if (entries.length === 0) return;
-
-    // Check the most recent stored room (could be multiple; check all briefly)
     (async () => {
       for (const [key, playerId] of entries) {
-        const roomId = key.slice(3, -4); // pr_ROOMID_pid
+        const rid = key.slice(3, -4);
         try {
-          const res = await fetch(`/api/game?roomId=${roomId}&playerId=${playerId}`, { cache: "no-store" });
-          if (!res.ok) {
-            // Room gone — clean up stale key
-            localStorage.removeItem(key);
-            continue;
-          }
+          const res = await fetch(`/api/game?roomId=${rid}&playerId=${playerId}`, { cache: "no-store" });
+          if (!res.ok) { localStorage.removeItem(key); continue; }
           const data = await res.json();
-          if (data.phase === "ended") {
-            localStorage.removeItem(key);
-            continue;
-          }
-          // Found a live game
-          setActiveGame({ roomId, playerId, phase: data.phase });
+          if (data.phase === "ended") { localStorage.removeItem(key); continue; }
+          setActiveGame({ roomId: rid, playerId, phase: data.phase });
           return;
         } catch { /* ignore */ }
       }
@@ -64,7 +54,6 @@ export default function HomePage() {
     })();
   }, []);
 
-  // Called when intro overlay finishes — navigate to the room
   const handleIntroDone = useCallback(() => {
     if (!pendingRoom) return;
     router.push(`/room/${pendingRoom.roomId}`);
@@ -75,9 +64,8 @@ export default function HomePage() {
     setErr(""); setLoading(true);
     localStorage.setItem("pr_avatar", avatarId.toString());
     try {
-      const res  = await fetch("/api/game", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch("/api/game", {
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "createRoom", playerName: name.trim(), maxPlayers, avatarId }),
       });
       const data = await res.json();
@@ -95,8 +83,7 @@ export default function HomePage() {
     localStorage.setItem("pr_avatar", avatarId.toString());
     try {
       const res = await fetch("/api/game", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "createSoloRoom", playerName: name.trim(), avatarId }),
       });
       const data = await res.json();
@@ -109,15 +96,14 @@ export default function HomePage() {
   }
 
   async function handleJoin() {
-    if (!name.trim())   { setErr("Enter your name first"); return; }
+    if (!name.trim()) { setErr("Enter your name first"); return; }
     if (!roomId.trim()) { setErr("Enter a room code"); return; }
     setErr(""); setLoading(true);
     localStorage.setItem("pr_avatar", avatarId.toString());
     const code = roomId.trim().toUpperCase();
     try {
-      const res  = await fetch("/api/game", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch("/api/game", {
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "joinRoom", roomId: code, playerName: name.trim(), avatarId }),
       });
       const data = await res.json();
@@ -129,186 +115,357 @@ export default function HomePage() {
     } catch (e) { setErr(e.message); setLoading(false); }
   }
 
+  // Auto-fill name from auth profile
+  useEffect(() => {
+    if (profile?.username && !name) setName(profile.username);
+    else if (user?.name && !name) setName(user.name);
+  }, [profile, user]); // eslint-disable-line
+
+  const currentCity = CITY_CONFIGS[city] || CITY_CONFIGS.lasvegas;
+  const isLoggedIn = !!user;
+
   return (
     <div className="min-h-full flex flex-col relative">
-      {/* Intro overlay — shown after create/join until girl finishes her line */}
       {pendingRoom && <IntroOverlay onDone={handleIntroDone} />}
-
       <CasinoBackground city={city} />
-      <div className="relative z-10 flex flex-col min-h-full">
-      <div className="flex flex-col items-center pt-5 sm:pt-12 pb-3 sm:pb-6 px-4 text-center">
-        <div className="hidden sm:flex gap-2 mb-6">
-          {COLOR_PILLS.map((p, i) => (
-            <div key={i} className="w-3 h-3 rounded-full opacity-80" style={{ backgroundColor: p.color }} />
-          ))}
-        </div>
-        <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white leading-none">
-          Property<span className="text-indigo-400">Rush</span>
-        </h1>
-        <p className="hidden sm:block text-slate-400 text-base mt-3 max-w-xs">
-          The fast property trading card game.<br />
-          Collect 3 sets before your opponents do.
-        </p>
-        <div className="hidden sm:flex flex-wrap gap-2 mt-5 justify-center">
-          {["2–4 Players", "~15 min", "Strategy + Luck", "No signup"].map((f) => (
-            <span key={f} className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 text-xs font-medium">{f}</span>
-          ))}
-        </div>
-      </div>
 
-      <div className="flex-1 flex flex-col items-center px-4 pb-8">
-        {/* City background selector — desktop only */}
-        <div className="hidden sm:block w-full max-w-sm mb-4">
-          <div className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 text-center">🌆 Casino Scene</div>
-          <div className="grid grid-cols-3 gap-1.5">
-            {Object.entries(CITY_CONFIGS).map(([key, cfg]) => (
-              <button
-                key={key}
-                onClick={() => { setCity(key); localStorage.setItem("pr_city", key); }}
-                className={`px-2 py-1.5 rounded-xl text-xs font-medium transition-all border ${
-                  city === key
-                    ? "bg-indigo-600/80 border-indigo-400/60 text-white"
-                    : "bg-slate-800/60 border-white/10 text-slate-400 hover:text-white hover:border-white/20"
-                }`}
-              >
-                {cfg.label}
-              </button>
+      <Nav />
+
+      <div className="relative z-10 flex-1 flex flex-col">
+        {/* ── Hero ───────────────────────────────────────────────────────── */}
+        <div className="flex flex-col items-center pt-6 sm:pt-10 pb-4 px-4 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-4">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs text-slate-400 font-medium">
+              {currentCity.label} Table
+            </span>
+          </div>
+          <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-none">
+            Property<span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">Rush</span>
+          </h1>
+          <p className="text-slate-400 text-sm sm:text-base mt-3 max-w-sm">
+            Beat opponents. Collect 3 sets. Take the pot.
+          </p>
+
+          {/* QUICK MATCH — creates a room, waits for players, fills with bots after 60s */}
+          <button
+            onClick={() => {
+              const quickName = name.trim() || (isLoggedIn ? (profile?.username || user?.name) : `Player${Math.floor(Math.random() * 999)}`);
+              setName(quickName);
+              localStorage.setItem("pr_avatar", avatarId.toString());
+              setLoading(true);
+              fetch("/api/game", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "createRoom", playerName: quickName, maxPlayers: 4, avatarId }),
+              })
+                .then(r => r.json())
+                .then(data => {
+                  if (data.error) { setErr(data.error); setLoading(false); return; }
+                  sessionStorage.setItem(`pr_${data.roomId}_pid`, data.playerId);
+                  localStorage.setItem(`pr_${data.roomId}_pid`, data.playerId);
+                  setLoading(false);
+                  setPendingRoom({ roomId: data.roomId, playerId: data.playerId });
+                })
+                .catch(e => { setErr(e.message); setLoading(false); });
+            }}
+            disabled={loading}
+            className="mt-5 px-10 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-black text-lg transition-all shadow-xl shadow-emerald-500/25 hover:shadow-emerald-400/30 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+          >
+            {loading ? "Finding match..." : "Play Now"}
+          </button>
+          <p className="text-slate-600 text-[10px] mt-1.5">Instant match &middot; no signup needed</p>
+
+          {/* Feature pills */}
+          <div className="flex flex-wrap gap-2 mt-4 justify-center">
+            {[
+              { icon: "👥", text: "2-4 Players" },
+              { icon: "⏱", text: "~3 min games" },
+              { icon: "🔒", text: "Provably Fair" },
+              { icon: "💎", text: "Win Credits" },
+            ].map((f) => (
+              <span key={f.text} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/8 text-white/70 text-xs font-medium">
+                <span>{f.icon}</span>{f.text}
+              </span>
             ))}
           </div>
         </div>
 
-        {/* Rejoin banner */}
-        {activeGame && (
-          <div className="w-full max-w-sm mb-4 bg-emerald-900/50 border border-emerald-500/40 rounded-2xl px-5 py-4 flex items-center gap-3">
-            <div className="flex-1">
-              <div className="text-emerald-300 font-bold text-sm">Active game found</div>
-              <div className="text-emerald-400/70 text-xs font-mono mt-0.5">Room: {activeGame.roomId} · {activeGame.phase}</div>
-            </div>
-            <button
-              onClick={() => {
-                sessionStorage.setItem(`pr_${activeGame.roomId}_pid`, activeGame.playerId);
-                router.push(`/room/${activeGame.roomId}`);
-              }}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors"
-            >
-              Rejoin →
-            </button>
-          </div>
-        )}
-        <div className="w-full max-w-sm bg-slate-900/85 backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl p-4 sm:p-6">
-          <div className="flex rounded-2xl bg-slate-900/60 p-1 mb-6 gap-1">
-            <TabBtn active={tab === "create"} onClick={() => { setTab("create"); setErr(""); }}>Create Room</TabBtn>
-            <TabBtn active={tab === "join"}   onClick={() => { setTab("join");   setErr(""); }}>Join Room</TabBtn>
-          </div>
+        {/* ── Live Activity Bar ─────────────────────────────────────────── */}
+        <div className="flex items-center justify-center gap-4 sm:gap-6 py-2 px-4 text-[11px] text-slate-500">
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-emerald-400 font-bold">LIVE</span>
+          </span>
+          <span>Games today: <span className="text-white font-bold">--</span></span>
+          <span className="hidden sm:inline">Players online: <span className="text-white font-bold">--</span></span>
+          <span className="hidden sm:inline">Total won: <span className="text-amber-400 font-bold">--</span> credits</span>
+        </div>
 
-          <label className="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1.5">Your Name</label>
-          <input
-            type="text" value={name} onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && (tab === "create" ? handleCreate() : handleJoin())}
-            placeholder="e.g. Alex" maxLength={20}
-            className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-all mb-4"
-          />
+        {/* ── Main Content: two columns on desktop ──────────────────────── */}
+        <div className="flex-1 flex flex-col lg:flex-row items-start justify-center gap-6 px-4 sm:px-8 pb-8 max-w-5xl mx-auto w-full">
 
-          {/* Avatar picker */}
-          <div className="mb-4">
-            <label className="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1.5">Your Avatar</label>
-            <AvatarPicker
-              selected={avatarId}
-              onSelect={(id) => { setAvatarId(id); localStorage.setItem("pr_avatar", id.toString()); }}
-            />
-          </div>
+          {/* Left: Quick Play Actions */}
+          <div className="w-full lg:w-96 space-y-4">
+            {/* Rejoin banner */}
+            {activeGame && (
+              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl px-5 py-4 flex items-center gap-3 animate-pulse">
+                <div className="flex-1">
+                  <div className="text-emerald-300 font-bold text-sm">Game in progress</div>
+                  <div className="text-emerald-400/60 text-xs font-mono mt-0.5">Room: {activeGame.roomId}</div>
+                </div>
+                <button
+                  onClick={() => {
+                    sessionStorage.setItem(`pr_${activeGame.roomId}_pid`, activeGame.playerId);
+                    router.push(`/room/${activeGame.roomId}`);
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition"
+                >
+                  Rejoin
+                </button>
+              </div>
+            )}
 
-          {tab === "create" && (
-            <>
-              <label className="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1.5">Number of Players</label>
-              <div className="flex gap-2 mb-4">
-                {[2, 3, 4].map((n) => (
+            {/* Game Form Card */}
+            <div className="bg-slate-900/80 backdrop-blur-xl border border-white/8 rounded-2xl p-5 shadow-2xl">
+              {/* Tab Switch */}
+              <div className="flex rounded-xl bg-black/30 p-1 mb-5">
+                <TabBtn active={tab === "create"} onClick={() => { setTab("create"); setErr(""); }}>Create Room</TabBtn>
+                <TabBtn active={tab === "join"} onClick={() => { setTab("join"); setErr(""); }}>Join Room</TabBtn>
+              </div>
+
+              {/* Name Input — auto-filled when logged in, editable */}
+              <label className="block text-slate-500 text-[11px] font-bold uppercase tracking-widest mb-1.5">
+                {isLoggedIn ? "Playing as" : "Player Name"}
+              </label>
+              <div className="relative mb-4">
+                <input
+                  type="text" value={name} onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && (tab === "create" ? handleCreate() : handleJoin())}
+                  placeholder={isLoggedIn ? profile?.username || user?.name : "Enter your name"} maxLength={20}
+                  className={`w-full bg-black/30 border rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all ${
+                    isLoggedIn ? "border-violet-500/20" : "border-white/8"
+                  }`}
+                />
+                {isLoggedIn && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] text-violet-400/60">
+                    edit to change
+                  </span>
+                )}
+              </div>
+
+              {/* Avatar */}
+              <div className="mb-4">
+                <label className="block text-slate-500 text-[11px] font-bold uppercase tracking-widest mb-1.5">Avatar</label>
+                <AvatarPicker
+                  selected={avatarId}
+                  onSelect={(id) => { setAvatarId(id); localStorage.setItem("pr_avatar", id.toString()); }}
+                />
+              </div>
+
+              {tab === "create" && (
+                <>
+                  <label className="block text-slate-500 text-[11px] font-bold uppercase tracking-widest mb-1.5">Players</label>
+                  <div className="flex gap-2 mb-4">
+                    {[2, 3, 4].map((n) => (
+                      <button
+                        key={n} onClick={() => setMaxPlayers(n)}
+                        className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all border ${
+                          maxPlayers === n
+                            ? "bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-500/20"
+                            : "bg-black/20 border-white/8 text-slate-500 hover:text-white hover:border-white/15"
+                        }`}
+                      >
+                        {n}P
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* City Selector (collapsed) */}
                   <button
-                    key={n}
-                    onClick={() => setMaxPlayers(n)}
-                    className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all border ${
-                      maxPlayers === n
-                        ? "bg-indigo-600 border-indigo-500 text-white"
-                        : "bg-slate-900/60 border-white/10 text-slate-400 hover:text-white hover:border-white/20"
-                    }`}
+                    onClick={() => setShowCities(!showCities)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-black/20 border border-white/5 text-slate-400 text-xs mb-4 hover:border-white/10 transition"
                   >
-                    {n} Players
+                    <span>Table: {currentCity.label}</span>
+                    <span className="text-[10px]">{showCities ? "▲" : "▼"}</span>
                   </button>
+                  {showCities && (
+                    <div className="grid grid-cols-3 gap-1 mb-4">
+                      {Object.entries(CITY_CONFIGS).map(([key, cfg]) => (
+                        <button
+                          key={key}
+                          onClick={() => { setCity(key); localStorage.setItem("pr_city", key); setShowCities(false); }}
+                          className={`px-2 py-1.5 rounded-lg text-[11px] font-medium transition border ${
+                            city === key
+                              ? "bg-violet-600/60 border-violet-400/50 text-white"
+                              : "bg-black/20 border-white/5 text-slate-500 hover:text-white"
+                          }`}
+                        >
+                          {cfg.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {tab === "join" && (
+                <>
+                  <label className="block text-slate-500 text-[11px] font-bold uppercase tracking-widest mb-1.5">Room Code</label>
+                  <input
+                    type="text" value={roomId} onChange={(e) => setRoomId(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === "Enter" && handleJoin()}
+                    placeholder="ABC123" maxLength={6}
+                    className="w-full bg-black/30 border border-white/8 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm font-mono uppercase tracking-widest focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all mb-4"
+                  />
+                </>
+              )}
+
+              {err && (
+                <div className="mb-4 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">{err}</div>
+              )}
+
+              <button
+                onClick={tab === "create" ? handleCreate : handleJoin}
+                disabled={loading}
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:from-slate-700 disabled:to-slate-700 text-white font-bold text-sm transition-all shadow-lg shadow-violet-500/15"
+              >
+                {loading ? "Loading..." : tab === "create" ? "Create Room" : "Join Game"}
+              </button>
+
+              <p className="text-center text-slate-700 text-[9px] mt-3">
+                Games start when players join. Share room code to play with friends.
+              </p>
+            </div>
+          </div>
+
+          {/* Right: Info Cards (desktop) */}
+          <div className="hidden lg:flex flex-col gap-4 w-80">
+            {/* How to Play */}
+            <div className="bg-slate-900/60 backdrop-blur-md border border-white/5 rounded-2xl p-5">
+              <h3 className="text-white font-bold text-sm mb-3">How to Play</h3>
+              <div className="space-y-3">
+                {[
+                  { step: "1", title: "Draw cards", desc: "Draw 2 cards at the start of your turn" },
+                  { step: "2", title: "Play cards", desc: "Play up to 3 cards — properties, money, or actions" },
+                  { step: "3", title: "Collect sets", desc: "First to complete 3 full property sets wins!" },
+                ].map((s) => (
+                  <div key={s.step} className="flex gap-3">
+                    <div className="w-6 h-6 rounded-full bg-violet-600/30 border border-violet-500/30 flex items-center justify-center text-[10px] font-bold text-violet-300 shrink-0">{s.step}</div>
+                    <div>
+                      <div className="text-white text-xs font-semibold">{s.title}</div>
+                      <div className="text-slate-500 text-[11px] leading-relaxed">{s.desc}</div>
+                    </div>
+                  </div>
                 ))}
               </div>
-            </>
-          )}
+            </div>
 
-          {tab === "join" && (
-            <>
-              <label className="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1.5">Room Code</label>
-              <input
-                type="text" value={roomId} onChange={(e) => setRoomId(e.target.value.toUpperCase())}
-                onKeyDown={(e) => e.key === "Enter" && handleJoin()}
-                placeholder="e.g. ABC123" maxLength={6}
-                className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm font-mono uppercase tracking-widest focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-all mb-4"
-              />
-            </>
-          )}
-
-          {err && (
-            <div className="mb-4 px-4 py-2 rounded-xl bg-red-900/50 border border-red-500/30 text-red-300 text-sm">⚠ {err}</div>
-          )}
-
-          <button
-            onClick={tab === "create" ? handleCreate : handleJoin}
-            disabled={loading}
-            className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold text-base transition-all duration-150 shadow-lg shadow-indigo-500/20"
-          >
-            {loading ? "Loading…" : tab === "create" ? "Create Room +" : "Join Game →"}
-          </button>
-          <button
-            onClick={handleSolo}
-            disabled={loading}
-            className="w-full py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold text-sm transition-all duration-150 shadow-lg mt-2"
-          >
-            {loading ? "Loading…" : "⚡ Play Solo vs 3 Bots"}
-          </button>
-        </div>
-
-        {/* Card Gallery link — desktop only */}
-        <div className="hidden sm:block w-full max-w-sm mt-4">
-          <a href="/cards" className="flex items-center justify-between w-full px-4 py-3 rounded-2xl bg-gradient-to-r from-violet-900/60 to-indigo-900/60 border border-violet-500/25 hover:border-violet-400/40 transition-all group">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🃏</span>
-              <div>
-                <div className="text-white font-bold text-sm group-hover:text-violet-300 transition-colors">Card Gallery</div>
-                <div className="text-white/40 text-xs">View all 110 cards & their effects</div>
+            {/* Quick Links */}
+            <a href="/cards" className="flex items-center gap-3 bg-slate-900/60 backdrop-blur-md border border-white/5 rounded-2xl p-4 hover:border-violet-500/20 transition group">
+              <div className="w-10 h-10 rounded-xl bg-violet-600/20 flex items-center justify-center text-lg">🃏</div>
+              <div className="flex-1">
+                <div className="text-white text-sm font-semibold group-hover:text-violet-300 transition">Card Gallery</div>
+                <div className="text-slate-500 text-[11px]">View all 110 cards & effects</div>
               </div>
-            </div>
-            <span className="text-white/40 group-hover:text-white transition-colors">→</span>
-          </a>
-        </div>
+              <span className="text-slate-600 group-hover:text-white transition">→</span>
+            </a>
 
-        {/* How to Play — desktop only */}
-        <div className="hidden sm:block w-full max-w-sm mt-3">
-          <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-4">
-            <h3 className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">How to Play</h3>
-            <div className="space-y-2">
-              {[
-                ["🃏", "Draw 2 cards at the start of your turn"],
-                ["🏠", "Play up to 3 cards — properties, money, or actions"],
-                ["🏆", "First to complete 3 full property sets wins!"],
-                ["🚫", "Play Just Say No to cancel any action against you"],
-              ].map(([icon, text], i) => (
-                <div key={i} className="flex items-start gap-2.5">
-                  <span className="text-base flex-shrink-0">{icon}</span>
-                  <span className="text-slate-400 text-xs leading-relaxed">{text}</span>
-                </div>
-              ))}
-            </div>
+            <a href="/credits" className="flex items-center gap-3 bg-slate-900/60 backdrop-blur-md border border-white/5 rounded-2xl p-4 hover:border-emerald-500/20 transition group">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600/20 flex items-center justify-center text-lg">💰</div>
+              <div className="flex-1">
+                <div className="text-white text-sm font-semibold group-hover:text-emerald-300 transition">Credits & Wallet</div>
+                <div className="text-slate-500 text-[11px]">Deposit, withdraw, manage funds</div>
+              </div>
+              <span className="text-slate-600 group-hover:text-white transition">→</span>
+            </a>
+
+            <a href="/leaderboard" className="flex items-center gap-3 bg-slate-900/60 backdrop-blur-md border border-white/5 rounded-2xl p-4 hover:border-amber-500/20 transition group">
+              <div className="w-10 h-10 rounded-xl bg-amber-600/20 flex items-center justify-center text-lg">🏆</div>
+              <div className="flex-1">
+                <div className="text-white text-sm font-semibold group-hover:text-amber-300 transition">Leaderboard</div>
+                <div className="text-slate-500 text-[11px]">Top players & rankings</div>
+              </div>
+              <span className="text-slate-600 group-hover:text-white transition">→</span>
+            </a>
+
           </div>
         </div>
-      </div>
 
-      <footer className="hidden sm:block text-center py-4 px-4 text-slate-600 text-xs border-t border-white/5">
-        This is a prototype demo. Not affiliated with any brand. No real-money gameplay.
-      </footer>
+        {/* ── Floating "Your Date" CTA — pinned near the 3D girl ───── */}
+        <a
+          href="/partners"
+          className="hidden lg:flex fixed bottom-32 right-48 z-20 items-center gap-2 group animate-bounce-arrow"
+        >
+          <div className="bg-black/60 backdrop-blur-md border border-pink-500/30 rounded-2xl pl-5 pr-4 py-3 shadow-2xl shadow-pink-500/10 group-hover:border-pink-400/50 group-hover:shadow-pink-500/20 transition-all max-w-[240px]">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">❤️</span>
+              <div
+                className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-fuchsia-400"
+                style={{ fontFamily: "'Georgia', serif", fontStyle: "italic" }}
+              >
+                Bring a Date
+              </div>
+              <span className="text-2xl" style={{ transform: "rotate(30deg) scaleX(-1)", display: "inline-block" }}>🏹</span>
+            </div>
+            <div className="text-[10px] text-pink-300/80 leading-relaxed mt-1.5 pl-8">
+              Your date cheers you on, roasts opponents & celebrates your wins at the table
+            </div>
+            <div className="text-[9px] text-pink-400/50 font-bold tracking-wider uppercase mt-1 pl-8">
+              4 free starters &middot; tap to choose
+            </div>
+          </div>
+        </a>
+
+        {/* ── Footer Disclaimers ───────────────────────────────────────── */}
+        <footer className="hidden lg:block relative z-10 border-t border-white/5 mt-8 px-8 py-6">
+          <div className="max-w-5xl mx-auto">
+            <div className="grid grid-cols-3 gap-6 mb-4">
+              <div>
+                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">Provably Fair</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Every game uses SHA-256 cryptographic seed commitment. The deck order is mathematically determined before the game starts and cannot be changed. Verify any game at <a href="/fairness" className="text-violet-500 hover:underline">/fairness</a>.
+                </p>
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">Responsible Gaming</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Play responsibly. We enforce loss limits, cooldown periods, and daily caps to protect players. If you feel you are losing control, please take a break. Free rooms are always available.
+                </p>
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">Security</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  All transactions are on Polygon blockchain. Funds are secured in encrypted wallets. We use rate limiting, fraud detection, and anti-cheat systems to keep gameplay fair for everyone.
+                </p>
+              </div>
+            </div>
+            <div className="border-t border-white/5 pt-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+              <p className="text-[10px] text-slate-700">
+                PropertyRush is a skill-based card game. Not a gambling platform. Credits have no real-world cash value until withdrawn. 18+ only.
+              </p>
+              <div className="flex items-center gap-4 text-[10px] text-slate-700">
+                <a href="/fairness" className="hover:text-slate-400 transition">Provably Fair</a>
+                <span>&middot;</span>
+                <a href="/responsible-gaming" className="hover:text-slate-400 transition">Responsible Gaming</a>
+                <span>&middot;</span>
+                <a href="/security" className="hover:text-slate-400 transition">Security</a>
+                <span>&middot;</span>
+                <span>Terms</span>
+                <span>&middot;</span>
+                <span>Privacy</span>
+              </div>
+            </div>
+          </div>
+        </footer>
+
+        {/* ── Mobile Bottom Nav ────────────────────────────────────────── */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 backdrop-blur-md border-t border-white/5 px-2 py-1.5 flex justify-around">
+          <MobileNavBtn href="/" icon="🏠" label="Home" active />
+          <MobileNavBtn href="/cards" icon="🃏" label="Cards" />
+          <MobileNavBtn href="/credits" icon="💰" label="Credits" />
+          <MobileNavBtn href="/leaderboard" icon="🏆" label="Ranks" />
+          <MobileNavBtn href="/login" icon="👤" label="Sign In" />
+        </div>
       </div>
     </div>
   );
@@ -316,13 +473,21 @@ export default function HomePage() {
 
 function TabBtn({ active, onClick, children }) {
   return (
-    <button
-      onClick={onClick}
-      className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
-        active ? "bg-indigo-600 text-white shadow-sm" : "text-slate-400 hover:text-white"
+    <button onClick={onClick}
+      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+        active ? "bg-violet-600 text-white shadow-sm" : "text-slate-500 hover:text-white"
       }`}
     >
       {children}
     </button>
+  );
+}
+
+function MobileNavBtn({ href, icon, label, active }) {
+  return (
+    <a href={href} className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition ${active ? "text-violet-400" : "text-slate-500"}`}>
+      <span className="text-base">{icon}</span>
+      <span className="text-[9px] font-medium">{label}</span>
+    </a>
   );
 }
