@@ -13,7 +13,7 @@ const IntroOverlay = dynamic(() => import("@/components/IntroOverlay"), { ssr: f
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, profile, isAdmin, loading: authLoading } = useAuth();
+  const { user, profile, isAdmin, equippedDate, loading: authLoading } = useAuth();
 
   // Admins are redirected to admin dashboard — they can't play
   useEffect(() => {
@@ -127,7 +127,7 @@ export default function HomePage() {
   return (
     <div className="min-h-full flex flex-col relative">
       {pendingRoom && <IntroOverlay onDone={handleIntroDone} />}
-      <CasinoBackground city={city} />
+      <CasinoBackground city={city} dateImageUrl={equippedDate?.thumbnailUrl} />
 
       <Nav />
 

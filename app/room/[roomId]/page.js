@@ -18,7 +18,7 @@ const RETRY_BASE_MS       = 600;   // backoff base (600 ms, 1200 ms, 1800 ms)
 export default function RoomPage() {
   const { roomId } = useParams();
   const router     = useRouter();
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin, equippedDate, loading: authLoading } = useAuth();
 
   // Admins can't play — redirect to admin dashboard
   useEffect(() => {
@@ -252,7 +252,7 @@ export default function RoomPage() {
 
     return (
       <div className="min-h-full flex flex-col items-center justify-center px-4 relative">
-        <CasinoBackground city={city} cheering={state?.phase === "ended"} players={state?.players ?? []} gameActive={false} />
+        <CasinoBackground city={city} cheering={state?.phase === "ended"} players={state?.players ?? []} gameActive={false} dateImageUrl={equippedDate?.thumbnailUrl} />
         <div className="relative z-10 w-full flex flex-col items-center justify-center">
         <div className="w-full max-w-sm bg-slate-900/85 backdrop-blur-md border border-white/10 rounded-3xl shadow-2xl p-8">
           <div className="text-center mb-6">
@@ -359,6 +359,7 @@ export default function RoomPage() {
         gameActive={state?.phase === "playing"}
         reactionTrigger={cardPlayCount}
         lossTarget={lossTarget}
+        dateImageUrl={equippedDate?.thumbnailUrl}
       />
       <div className="relative z-10 h-full flex flex-col">
       {/* Header */}
