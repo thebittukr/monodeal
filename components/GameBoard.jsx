@@ -313,7 +313,6 @@ export default function GameBoard({ state, myId, onMove, error }) {
                         <div className="flex items-center gap-1.5">
                           <span className="text-white font-bold text-xs truncate">{opp.name}</span>
                           {opp.countryCode && <span className="text-[10px]">{countryFlag(opp.countryCode)}</span>}
-                          {opp.isBot && <span className="text-[8px] bg-white/5 text-slate-600 px-1 rounded">BOT</span>}
                           {isOppTurn && <span className="text-emerald-400 text-[10px] shrink-0">thinking...</span>}
                         </div>
                         <div className="flex gap-3 text-slate-500 text-[10px]">
