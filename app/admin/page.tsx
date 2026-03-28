@@ -370,10 +370,10 @@ function DatesTab({ onError }: { onError: (e: string) => void }) {
       {showForm && (
         <div className="bg-black/20 rounded-xl p-4 mb-4 space-y-3">
           <div className="bg-violet-900/20 border border-violet-500/20 rounded-lg p-3">
-            <p className="text-xs text-violet-300 font-bold mb-2">Upload character (PNG/GIF or green screen MP4)</p>
+            <p className="text-xs text-violet-300 font-bold mb-2">Upload character (MP4 or image)</p>
             <input type="file" accept="image/png,image/gif,.apng,video/mp4" onChange={e => setVideoFile(e.target.files?.[0] || null)}
               className="text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-violet-600 file:text-white file:text-xs file:font-bold file:cursor-pointer" />
-            <p className="text-[9px] text-slate-600 mt-1">PNG/GIF (transparent bg) or MP4 (green screen — auto-converts locally). Stored in Vercel Blob.</p>
+            <p className="text-[9px] text-slate-600 mt-1">MP4 video or PNG/JPG image. Saved directly — no conversion needed.</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <Inp label="Name" value={form.name} set={v => setForm({...form, name: v})} />
