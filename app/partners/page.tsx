@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 
 interface Girlfriend {
   id: string;
@@ -96,9 +99,21 @@ export default function PartnersPage() {
                   onClick={() => setSelected(gf)}
                   className={`${rc.bg} border ${rc.border} rounded-2xl p-3 sm:p-4 text-left hover:scale-[1.02] transition-all shadow-lg ${rc.glow} group`}
                 >
-                  {/* Model placeholder */}
-                  <div className="aspect-[3/4] bg-black/30 rounded-xl mb-3 flex items-center justify-center overflow-hidden">
-                    <div className="text-4xl opacity-30">{gf.gender === "female" ? "👩" : "👨"}</div>
+                  {/* Model thumbnail — use thumbnailUrl if available, else show model indicator */}
+                  <div className="aspect-[3/4] bg-black/30 rounded-xl mb-3 flex items-center justify-center overflow-hidden relative">
+                    {gf.thumbnailUrl ? (
+                      <img src={gf.thumbnailUrl} alt={gf.name} className="w-full h-full object-cover" />
+                    ) : gf.modelUrl ? (
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="text-3xl">{gf.gender === "female" ? "👩" : "👨"}</div>
+                        <div className="text-[8px] text-violet-400/60 font-bold uppercase">3D Model</div>
+                      </div>
+                    ) : (
+                      <div className="text-4xl opacity-30">{gf.gender === "female" ? "👩" : "👨"}</div>
+                    )}
+                    {gf.modelUrl && (
+                      <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-violet-600/50 flex items-center justify-center text-[8px] text-white font-bold">3D</div>
+                    )}
                   </div>
                   <div className="flex items-start justify-between gap-1">
                     <div className="min-w-0">
@@ -134,8 +149,14 @@ export default function PartnersPage() {
               <button onClick={() => setSelected(null)} className="text-slate-500 hover:text-white text-xl transition">&times;</button>
             </div>
 
-            <div className="aspect-[3/4] bg-black/30 rounded-xl mb-4 flex items-center justify-center">
-              <div className="text-6xl opacity-30">{selected.gender === "female" ? "👩" : "👨"}</div>
+            <div className="aspect-[3/4] bg-black/30 rounded-xl mb-4 overflow-hidden">
+              {selected.modelUrl ? (
+                <MiniModelViewer url={selected.modelUrl} />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-6xl opacity-30">{selected.gender === "female" ? "👩" : "👨"}</div>
+                </div>
+              )}
             </div>
 
             {selected.personality && (
@@ -146,6 +167,11 @@ export default function PartnersPage() {
             )}
             {selected.backstory && (
               <p className="text-slate-500 text-xs leading-relaxed mb-4">{selected.backstory}</p>
+            )}
+
+            {/* Model file info */}
+            {selected.modelUrl && (
+              <div className="text-[9px] text-slate-600 font-mono mb-3 truncate">Model: {selected.modelUrl}</div>
             )}
 
             <div className="flex gap-2">
@@ -163,5 +189,88 @@ export default function PartnersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// ── Mini 3D Model Viewer (used in detail modal) ─────────────────────────────
+
+function MiniModelViewer({ url }: { url: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(40, 3 / 4, 0.01, 100);
+
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new THREE.Scene()).texture;
+    pmrem.dispose();
+
+    scene.add(new THREE.AmbientLight(0xffffff, 3.0));
+    const key = new THREE.DirectionalLight(0xfff4e0, 3.0); key.position.set(1.5, 3, 2); scene.add(key);
+    const fill = new THREE.DirectionalLight(0xaabbff, 1.2); fill.position.set(-2, 1, 1); scene.add(fill);
+    scene.add(new THREE.DirectionalLight(0xffffff, 1.0)).position.set(0, 2, -3);
+
+    const dracoLoader = new DRACOLoader(); dracoLoader.setDecoderPath("/draco/");
+    const loader = new GLTFLoader(); loader.setDRACOLoader(dracoLoader);
+
+    let mixer: THREE.AnimationMixer | null = null;
+    let model: THREE.Group | null = null;
+    let rafId: number;
+    let rotY = 0;
+
+    loader.load(url, (gltf) => {
+      model = gltf.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const scale = 2.0 / Math.max(size.x, size.y, size.z);
+      model.scale.setScalar(scale);
+      model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+      scene.add(model);
+      camera.position.set(0, size.y * scale * 0.42, size.y * scale * 1.1);
+      camera.lookAt(0, size.y * scale * 0.42, 0);
+      if (gltf.animations.length > 0) {
+        mixer = new THREE.AnimationMixer(model);
+        mixer.clipAction(gltf.animations[0]).play();
+      }
+      setLoaded(true);
+    });
+
+    const clock = new THREE.Clock();
+    function animate() {
+      rafId = requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+      if (mixer) mixer.update(dt);
+      if (model) { rotY += dt * 0.3; model.rotation.y = rotY; }
+      const W = canvas!.clientWidth, H = canvas!.clientHeight;
+      if (W > 0 && H > 0) { renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); }
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      renderer.dispose();
+      dracoLoader.dispose();
+      scene.clear();
+    };
+  }, [url]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="w-full h-full block"
+      style={{ opacity: loaded ? 1 : 0, transition: "opacity 1s ease" }}
+    />
   );
 }
