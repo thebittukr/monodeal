@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-type Tab = "overview" | "players" | "transactions" | "games" | "fraud" | "dates" | "bots";
+type Tab = "overview" | "players" | "transactions" | "wallets" | "credits-usage" | "games" | "fraud" | "dates" | "bots";
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("overview");
@@ -21,7 +21,7 @@ export default function AdminDashboard() {
 
       {/* Tabs */}
       <div className="border-b border-white/5 px-4 sm:px-6 flex gap-1 overflow-x-auto no-scrollbar">
-        {(["overview","players","transactions","games","fraud","dates","bots"] as Tab[]).map(t => (
+        {(["overview","players","transactions","wallets","credits-usage","games","fraud","dates","bots"] as Tab[]).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-3 py-2.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap border-b-2 transition ${
               tab === t ? "border-violet-500 text-white" : "border-transparent text-slate-600 hover:text-slate-400"
@@ -37,6 +37,8 @@ export default function AdminDashboard() {
         {tab === "overview" && <OverviewTab onError={setError} />}
         {tab === "players" && <PlayersTab onError={setError} />}
         {tab === "transactions" && <TransactionsTab onError={setError} />}
+        {tab === "wallets" && <WalletsTab onError={setError} />}
+        {tab === "credits-usage" && <CreditsUsageTab onError={setError} />}
         {tab === "games" && <GamesTab onError={setError} />}
         {tab === "fraud" && <FraudTab onError={setError} />}
         {tab === "dates" && <DatesTab onError={setError} />}
@@ -352,6 +354,119 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div className="bg-slate-900/40 border border-white/5 rounded-xl p-4">
       <h3 className="text-sm font-bold text-white mb-3">{title}</h3>
       <div className="space-y-1">{children}</div>
+    </div>
+  );
+}
+
+// ── Wallets ──────────────────────────────────────────────────────────────────
+
+function WalletsTab({ onError }: { onError: (e: string) => void }) {
+  const [data, setData] = useState<any>(null);
+  useEffect(() => {
+    fetch("/api/admin/wallets").then(r => r.json()).then(d => d.error ? onError(d.error) : setData(d));
+  }, []);
+  if (!data) return <Loading />;
+  const s = data.summary || {};
+  return (
+    <div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <Stat label="Total Wallets" value={s.totalWallets || 0} />
+        <Stat label="Custodial" value={s.custodialCount || 0} />
+        <Stat label="External (MetaMask)" value={s.externalCount || 0} />
+        <Stat label="Credits in Circulation" value={`${(s.totalCreditsInCirculation || 0).toLocaleString()} cr`} color="text-amber-400" />
+      </div>
+      <div className="space-y-1">
+        {(data.wallets || []).map((w: any) => (
+          <div key={w.walletId} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/5 text-xs">
+            <div className={`px-2 py-0.5 rounded text-[9px] font-bold ${w.type === "custodial" ? "bg-violet-600/20 text-violet-400" : "bg-emerald-600/20 text-emerald-400"}`}>{w.type}</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-white font-bold truncate">{w.username || w.userId?.slice(0, 12)}</div>
+              <div className="text-slate-600 font-mono text-[9px] truncate">{w.address}</div>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="text-amber-400">{(w.creditBalance || 0).toLocaleString()} cr</div>
+              {(w.lockedBalance || 0) > 0 && <div className="text-yellow-500 text-[9px]">{w.lockedBalance} locked</div>}
+            </div>
+            <div className="text-slate-700 text-[9px]">{w.chain}</div>
+          </div>
+        ))}
+        {(data.wallets || []).length === 0 && <div className="text-slate-600 text-center py-8">No wallets yet</div>}
+      </div>
+    </div>
+  );
+}
+
+// ── Credits Usage Analytics ──────────────────────────────────────────────────
+
+function CreditsUsageTab({ onError }: { onError: (e: string) => void }) {
+  const [data, setData] = useState<any>(null);
+  useEffect(() => {
+    fetch("/api/admin/credits-usage").then(r => r.json()).then(d => d.error ? onError(d.error) : setData(d));
+  }, []);
+  if (!data) return <Loading />;
+  return (
+    <div className="space-y-6">
+      {/* By Type Summary */}
+      <Section title="Credits by Type (All Time)">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {(data.byType || []).map((t: any) => (
+            <div key={t.type} className="bg-black/20 rounded-lg p-3">
+              <div className="text-[9px] text-slate-600 font-bold uppercase">{t.type}</div>
+              <div className="text-white font-bold">{Number(t.total || 0).toLocaleString()} cr</div>
+              <div className="text-slate-600 text-[9px]">{t.count} txs &middot; avg {Math.round(Number(t.avg_amount || 0))}</div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* Daily Breakdown */}
+      <Section title="Daily Breakdown (Last 30 Days)">
+        <div className="overflow-x-auto">
+          <table className="w-full text-[10px]">
+            <thead>
+              <tr className="text-slate-600 border-b border-white/5">
+                <th className="text-left py-2 px-2">Date</th>
+                <th className="text-right px-2">TXs</th>
+                <th className="text-right px-2 text-blue-400">Deposits</th>
+                <th className="text-right px-2 text-red-400">Withdrawals</th>
+                <th className="text-right px-2 text-amber-400">Game Entry</th>
+                <th className="text-right px-2 text-emerald-400">Wins</th>
+                <th className="text-right px-2 text-green-400">Rake</th>
+                <th className="text-right px-2 text-pink-400">Dates</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data.daily || []).map((d: any) => (
+                <tr key={d.date} className="border-b border-white/[0.02] hover:bg-white/[0.02]">
+                  <td className="py-1.5 px-2 text-white font-mono">{d.date}</td>
+                  <td className="text-right px-2 text-slate-400">{d.total_txs}</td>
+                  <td className="text-right px-2 text-blue-400">{Number(d.deposits || 0).toLocaleString()}</td>
+                  <td className="text-right px-2 text-red-400">{Number(d.withdrawals || 0).toLocaleString()}</td>
+                  <td className="text-right px-2 text-amber-400">{Number(d.game_entries || 0).toLocaleString()}</td>
+                  <td className="text-right px-2 text-emerald-400">{Number(d.game_wins || 0).toLocaleString()}</td>
+                  <td className="text-right px-2 text-green-400">{Number(d.rake || 0).toLocaleString()}</td>
+                  <td className="text-right px-2 text-pink-400">{Number(d.date_purchases || 0).toLocaleString()}</td>
+                </tr>
+              ))}
+              {(data.daily || []).length === 0 && <tr><td colSpan={8} className="text-center py-8 text-slate-600">No data yet</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      {/* Top Spenders */}
+      <Section title="Top Spenders">
+        {(data.topSpenders || []).map((p: any, i: number) => (
+          <div key={p.user_id} className="flex items-center gap-3 px-3 py-1.5 text-xs">
+            <span className="text-slate-600 w-5 text-right">{i + 1}</span>
+            <span className="text-white font-bold flex-1">{p.username || p.user_id?.slice(0, 12)}</span>
+            <span className="text-red-400">Spent: {Number(p.total_spent || 0).toLocaleString()}</span>
+            <span className="text-emerald-400">Earned: {Number(p.total_earned || 0).toLocaleString()}</span>
+            <span className="text-slate-600">{p.tx_count} txs</span>
+          </div>
+        ))}
+        {(data.topSpenders || []).length === 0 && <div className="text-slate-600 text-sm">No data</div>}
+      </Section>
     </div>
   );
 }

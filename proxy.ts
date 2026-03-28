@@ -8,6 +8,7 @@ export const config = {
   matcher: [
     // Protect these routes — require auth
     "/credits/:path*",
+    "/wallet/:path*",
     "/profile/:path*",
     "/settings/:path*",
     // Partners + Leaderboard are PUBLIC (shop/browse view)
