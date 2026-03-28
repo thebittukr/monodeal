@@ -6,6 +6,7 @@ import CasinoBackground from "@/components/CasinoBackground";
 import MusicPlayer from "@/components/MusicPlayer";
 import { getMusicPlayer } from "@/lib/pixabayMusic";
 import { setNarratorEnabled } from "@/lib/narrator";
+import { useAuth } from "@/lib/useAuth";
 
 const POLL_INTERVAL       = 2000;  // 2 s — halves Redis usage, still fast enough
 const MAX_PLAYERS         = 4;
@@ -17,6 +18,12 @@ const RETRY_BASE_MS       = 600;   // backoff base (600 ms, 1200 ms, 1800 ms)
 export default function RoomPage() {
   const { roomId } = useParams();
   const router     = useRouter();
+  const { isAdmin } = useAuth();
+
+  // Admins can't play — redirect to admin dashboard
+  useEffect(() => {
+    if (isAdmin) router.push("/admin");
+  }, [isAdmin, router]);
 
   const [myId,            setMyId]            = useState(null);
   const [state,           setState]           = useState(null);

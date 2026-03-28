@@ -58,7 +58,7 @@ export default function CardGalleryPage() {
           <span className="text-slate-700">&middot;</span>
           <span className="text-slate-600">20 Money</span>
           <span className="text-slate-700">&middot;</span>
-          <span className="text-slate-600">34 Actions (29 classic + 5 chaos)</span>
+          <span className="text-slate-600">34 Actions</span>
           <span className="text-slate-700">&middot;</span>
           <span className="text-slate-600">13 Rent</span>
         </div>
@@ -109,16 +109,6 @@ export default function CardGalleryPage() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Custom Cards Note */}
-        <div className="mt-4 bg-violet-900/20 border border-violet-500/20 rounded-xl p-4">
-          <h3 className="text-xs font-bold text-violet-300 mb-1">PropertyRush Custom Cards</h3>
-          <p className="text-[10px] text-slate-400 leading-relaxed">
-            PropertyRush includes 5 unique chaos cards not found in the original game:
-            Identity Swap, Chaos Card, Wrecking Ball, Second Chance, and Time Warp.
-            These replace the Houses and Hotels from the classic version.
-          </p>
         </div>
 
         <div className="mt-6 text-center">

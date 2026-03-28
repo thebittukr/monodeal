@@ -33,12 +33,16 @@ export async function GET() {
       equippedDate = gf || null;
     }
 
+    const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").filter(Boolean);
+    const isAdmin = adminEmails.includes(user.email);
+
     return NextResponse.json({
       user: { id: user.id, email: user.email, name: user.name, image: user.image },
       profile: profile || null,
       rating: rating || null,
       credits: credits ? { balance: credits.balance, locked: credits.lockedBalance } : null,
       equippedDate,
+      isAdmin,
     });
   } catch (err: unknown) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });

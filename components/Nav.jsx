@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/useAuth";
 import { useState } from "react";
 
 export default function Nav() {
-  const { user, profile, credits, loading } = useAuth();
+  const { user, profile, credits, isAdmin, loading } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
 
   async function handleSignOut() {
@@ -22,20 +22,30 @@ export default function Nav() {
         <span className="text-white font-bold text-lg hidden sm:block">Property<span className="text-violet-400">Rush</span></span>
       </a>
       <div className="flex items-center gap-1 sm:gap-2">
-        <NavLink href="/cards">Cards</NavLink>
-        <NavLink href="/leaderboard">Ranks</NavLink>
-        <NavLink href="/partners">Dates</NavLink>
-
-        {user && (
+        {isAdmin ? (
           <>
-            <NavLink href="/credits">
-              Credits{credits ? ` (${credits.balance})` : ""}
-            </NavLink>
-            <NavLink href="/wallet">Wallet</NavLink>
+            <a href="/admin" className="px-3 py-1.5 rounded-lg bg-red-600/20 text-red-400 text-xs font-bold transition hover:bg-red-600/30 hidden sm:block">
+              Admin Dashboard
+            </a>
+          </>
+        ) : (
+          <>
+            <NavLink href="/cards">Cards</NavLink>
+            <NavLink href="/leaderboard">Ranks</NavLink>
+            <NavLink href="/partners">Dates</NavLink>
+
+            {user && (
+              <>
+                <NavLink href="/credits">
+                  Credits{credits ? ` (${credits.balance})` : ""}
+                </NavLink>
+                <NavLink href="/wallet">Wallet</NavLink>
+              </>
+            )}
+
+            <NavLink href="/fairness">Fair Play</NavLink>
           </>
         )}
-
-        <NavLink href="/fairness">Fair Play</NavLink>
 
         {loading ? (
           <div className="w-16 h-7 rounded-full bg-white/5 animate-pulse ml-2" />
