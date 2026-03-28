@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Nav from "@/components/Nav";
-import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+import { useAuth } from "@/lib/useAuth";
+import dynamic from "next/dynamic";
+
+// Only load 3D viewer when modal opens (saves ~2MB from initial bundle)
+const ModelViewer = dynamic(() => import("@/components/ModelViewer"), { ssr: false });
 
 interface Girlfriend {
   id: string;
@@ -22,21 +24,15 @@ interface Girlfriend {
   totalEquipped: number;
 }
 
-const RARITY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  common: { bg: "bg-slate-800/50", border: "border-slate-600/30", text: "text-slate-400" },
-  rare: { bg: "bg-blue-900/20", border: "border-blue-500/30", text: "text-blue-400" },
-  epic: { bg: "bg-purple-900/20", border: "border-purple-500/30", text: "text-purple-400" },
-  legendary: { bg: "bg-amber-900/20", border: "border-amber-500/30", text: "text-amber-400" },
-};
-
-const RARITY_GRADIENT: Record<string, string> = {
-  common: "from-slate-700/30 to-slate-900/50",
-  rare: "from-blue-800/20 to-slate-900/50",
-  epic: "from-purple-800/20 to-slate-900/50",
-  legendary: "from-amber-700/20 via-amber-900/10 to-slate-900/50",
+const RARITY_COLORS: Record<string, { bg: string; border: string; text: string; glow: string }> = {
+  common: { bg: "bg-slate-800/50", border: "border-slate-600/30", text: "text-slate-400", glow: "" },
+  rare: { bg: "bg-blue-900/20", border: "border-blue-500/30", text: "text-blue-400", glow: "shadow-blue-500/5" },
+  epic: { bg: "bg-purple-900/20", border: "border-purple-500/30", text: "text-purple-400", glow: "shadow-purple-500/10" },
+  legendary: { bg: "bg-amber-900/20", border: "border-amber-500/30", text: "text-amber-400", glow: "shadow-amber-500/15" },
 };
 
 export default function PartnersPage() {
+  const { user, isAdmin } = useAuth();
   const [girlfriends, setGirlfriends] = useState<Girlfriend[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -64,6 +60,27 @@ export default function PartnersPage() {
           <div className="text-xs text-slate-500">{girlfriends.length} available</div>
         </div>
 
+        {/* Sign up CTA for anonymous users */}
+        {!user && (
+          <div className="bg-gradient-to-r from-violet-900/30 to-indigo-900/30 border border-violet-500/20 rounded-2xl p-5 mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex-1">
+                <h3 className="text-white font-bold text-sm mb-1">Create an account for extra benefits</h3>
+                <ul className="text-slate-400 text-xs space-y-1">
+                  <li>Get 4 free starter dates immediately</li>
+                  <li>Save your collection across devices</li>
+                  <li>Appear on the leaderboard</li>
+                  <li>Play credits rooms and win real rewards</li>
+                  <li>Track your stats, ELO rating, and win streaks</li>
+                </ul>
+              </div>
+              <a href="/signup" className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-sm transition shadow-lg shadow-violet-600/20 shrink-0">
+                Create Account
+              </a>
+            </div>
+          </div>
+        )}
+
         {/* Rarity Filter */}
         <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar">
           {["all", "legendary", "epic", "rare", "common"].map((r) => (
@@ -84,25 +101,21 @@ export default function PartnersPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {filtered.map((gf) => {
               const rc = RARITY_COLORS[gf.rarity] || RARITY_COLORS.common;
-              const grad = RARITY_GRADIENT[gf.rarity] || RARITY_GRADIENT.common;
               return (
                 <button key={gf.id} onClick={() => setSelected(gf)}
-                  className={`${rc.bg} border ${rc.border} rounded-2xl p-3 sm:p-4 text-left hover:scale-[1.02] transition-all group`}>
-                  {/* Preview card */}
-                  <div className={`aspect-[3/4] bg-gradient-to-b ${grad} rounded-xl mb-3 flex flex-col items-center justify-center gap-2 relative overflow-hidden`}>
+                  className={`${rc.bg} border ${rc.border} rounded-2xl p-3 sm:p-4 text-left hover:scale-[1.02] transition-all group shadow-lg ${rc.glow}`}>
+                  {/* Static card — NO WebGL, just styled placeholder */}
+                  <div className="aspect-[3/4] bg-gradient-to-b from-slate-700/30 to-black/40 rounded-xl mb-3 flex flex-col items-center justify-center gap-2 relative overflow-hidden">
                     {gf.thumbnailUrl ? (
                       <img src={gf.thumbnailUrl} alt={gf.name} className="w-full h-full object-cover" />
                     ) : (
                       <>
-                        <div className="text-5xl">{gf.gender === "female" ? "👩" : "👨"}</div>
-                        <div className="text-[9px] text-violet-400/60 font-bold uppercase tracking-wider">Tap to preview 3D</div>
+                        <img src="/avatar-default.jpg" alt="" className="w-16 h-16 rounded-full object-cover opacity-60" />
+                        <div className="text-[9px] text-violet-400/50 font-bold uppercase">Tap to preview</div>
                       </>
                     )}
                     {gf.modelUrl && (
                       <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-violet-600/70 text-[8px] text-white font-bold">3D</div>
-                    )}
-                    {gf.rarity === "legendary" && (
-                      <div className="absolute inset-0 bg-gradient-to-t from-amber-500/10 to-transparent pointer-events-none" />
                     )}
                   </div>
                   <div className="flex items-start justify-between gap-1">
@@ -125,19 +138,17 @@ export default function PartnersPage() {
         )}
       </div>
 
-      {/* ── Detail Modal with 3D Viewer ──────────────────────────────── */}
+      {/* ── Detail Modal ─────────────────────────────────────────────── */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setSelected(null)}>
           <div className="bg-slate-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            {/* 3D Model or Image */}
-            <div className="w-full h-[400px] sm:h-[500px] bg-black/50 rounded-t-2xl sm:rounded-t-2xl overflow-hidden relative">
+            {/* 3D Model (dynamically loaded) */}
+            <div className="w-full h-[400px] sm:h-[500px] bg-black/50 rounded-t-2xl overflow-hidden relative">
               {selected.modelUrl ? (
                 <ModelViewer url={selected.modelUrl} />
-              ) : selected.thumbnailUrl ? (
-                <img src={selected.thumbnailUrl} alt={selected.name} className="w-full h-full object-contain" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <div className="text-8xl opacity-20">{selected.gender === "female" ? "👩" : "👨"}</div>
+                  <img src="/avatar-default.jpg" alt="" className="w-32 h-32 rounded-full opacity-20" />
                 </div>
               )}
               <button onClick={() => setSelected(null)}
@@ -162,17 +173,17 @@ export default function PartnersPage() {
                 </div>
               </div>
 
-              {selected.personality && (
-                <p className="text-violet-300 text-sm italic mb-2">&ldquo;{selected.personality}&rdquo;</p>
-              )}
-              {selected.description && (
-                <p className="text-slate-400 text-sm mb-2">{selected.description}</p>
-              )}
-              {selected.backstory && (
-                <p className="text-slate-600 text-xs leading-relaxed mb-4">{selected.backstory}</p>
-              )}
+              {selected.personality && <p className="text-violet-300 text-sm italic mb-2">&ldquo;{selected.personality}&rdquo;</p>}
+              {selected.description && <p className="text-slate-400 text-sm mb-2">{selected.description}</p>}
+              {selected.backstory && <p className="text-slate-600 text-xs leading-relaxed mb-4">{selected.backstory}</p>}
 
-              <DateActions girlfriend={selected} onDone={() => { setSelected(null); /* reload */ fetch("/api/girlfriends?view=shop").then(r => r.json()).then(d => setGirlfriends(d.girlfriends || [])); }} />
+              {user ? (
+                <DateActions girlfriend={selected} onDone={() => { setSelected(null); fetch("/api/girlfriends?view=shop").then(r => r.json()).then(d => setGirlfriends(d.girlfriends || [])); }} />
+              ) : (
+                <a href="/signup" className="block w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-sm text-center transition shadow-lg shadow-violet-500/15">
+                  Sign up to claim dates
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -181,9 +192,7 @@ export default function PartnersPage() {
   );
 }
 
-// ── 3D Model Viewer (fills container, proper framing) ────────────────────────
-
-// ── Date Actions (Claim/Buy/Equip) ───────────────────────────────────────────
+// ── Date Actions ─────────────────────────────────────────────────────────────
 
 function DateActions({ girlfriend, onDone }: { girlfriend: Girlfriend; onDone: () => void }) {
   const [loading, setLoading] = useState(false);
@@ -193,165 +202,50 @@ function DateActions({ girlfriend, onDone }: { girlfriend: Girlfriend; onDone: (
     setLoading(true); setMsg("");
     try {
       const res = await fetch("/api/girlfriends", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "buy", girlfriendId: girlfriend.id }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        if (res.status === 401) { setMsg("Sign in to claim dates"); return; }
-        throw new Error(data.error);
-      }
+      if (!res.ok) throw new Error(data.error);
       setMsg(data.message || "Claimed!");
       setTimeout(onDone, 1500);
     } catch (err: unknown) {
       setMsg((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   async function handleEquip() {
     setLoading(true); setMsg("");
     try {
       const res = await fetch("/api/girlfriends", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "equip", girlfriendId: girlfriend.id }),
       });
-      if (!res.ok) {
-        const data = await res.json();
-        if (res.status === 401) { setMsg("Sign in first"); return; }
-        throw new Error(data.error);
-      }
+      if (!res.ok) throw new Error((await res.json()).error);
       setMsg("Equipped!");
       setTimeout(onDone, 1000);
     } catch (err: unknown) {
       setMsg((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   return (
     <div>
       <div className="flex gap-2">
-        {girlfriend.isStarter ? (
-          <button onClick={handleBuy} disabled={loading}
-            className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition disabled:opacity-50">
-            {loading ? "Claiming..." : "Claim Free"}
-          </button>
-        ) : (
-          <button onClick={handleBuy} disabled={loading}
-            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-sm transition shadow-lg shadow-violet-500/15 disabled:opacity-50">
-            {loading ? "Buying..." : `Buy for ${girlfriend.priceCredits} credits`}
-          </button>
-        )}
+        <button onClick={handleBuy} disabled={loading}
+          className={`flex-1 py-3 rounded-xl font-bold text-sm transition disabled:opacity-50 ${
+            girlfriend.isStarter
+              ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+              : "bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-lg shadow-violet-500/15"
+          }`}>
+          {loading ? "..." : girlfriend.isStarter ? "Claim Free" : `Buy for ${girlfriend.priceCredits} credits`}
+        </button>
         <button onClick={handleEquip} disabled={loading}
           className="px-4 py-3 rounded-xl bg-pink-600/20 border border-pink-500/20 text-pink-300 font-bold text-sm hover:bg-pink-600/30 transition disabled:opacity-50">
           Equip
         </button>
       </div>
       {msg && <p className={`text-xs mt-2 text-center ${msg.includes("!") ? "text-emerald-400" : "text-red-400"}`}>{msg}</p>}
-    </div>
-  );
-}
-
-function ModelViewer({ url }: { url: string }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const canvas = document.createElement("canvas");
-    canvas.style.width = "100%";
-    canvas.style.height = "100%";
-    canvas.style.display = "block";
-    container.appendChild(canvas);
-
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(30, container.clientWidth / container.clientHeight, 0.01, 100);
-
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmrem.fromScene(new THREE.Scene()).texture;
-    pmrem.dispose();
-
-    scene.add(new THREE.AmbientLight(0xffffff, 3.0));
-    const key = new THREE.DirectionalLight(0xfff4e0, 3.0); key.position.set(1.5, 3, 2); scene.add(key);
-    const fill = new THREE.DirectionalLight(0xaabbff, 1.2); fill.position.set(-2, 1, 1); scene.add(fill);
-    scene.add(new THREE.DirectionalLight(0xffffff, 1.0)).position.set(0, 2, -3);
-
-    const dracoLoader = new DRACOLoader(); dracoLoader.setDecoderPath("/draco/");
-    const loader = new GLTFLoader(); loader.setDRACOLoader(dracoLoader);
-
-    let mixer: THREE.AnimationMixer | null = null;
-    let model: THREE.Group | null = null;
-    let rafId: number;
-    let rotY = 0.3;
-
-    loader.load(url, (gltf) => {
-      model = gltf.scene;
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
-      const scale = 2.2 / Math.max(size.x, size.y, size.z);
-      model.scale.setScalar(scale);
-      // Center model at origin, slight offset up so feet are visible
-      model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
-      scene.add(model);
-
-      // Camera looks at center of model
-      const h = size.y * scale;
-      camera.position.set(0, h * 0.5, h * 1.6);
-      camera.lookAt(0, h * 0.45, 0);
-
-      if (gltf.animations.length > 0) {
-        mixer = new THREE.AnimationMixer(model);
-        mixer.clipAction(gltf.animations[0]).play();
-      }
-      setLoaded(true);
-    });
-
-    const clock = new THREE.Clock();
-    function animate() {
-      rafId = requestAnimationFrame(animate);
-      const dt = clock.getDelta();
-      if (mixer) mixer.update(dt);
-      if (model) { rotY += dt * 0.25; model.rotation.y = rotY; }
-      const W = container.clientWidth, H = container.clientHeight;
-      if (W > 0 && H > 0) {
-        renderer.setSize(W, H, false);
-        camera.aspect = W / H;
-        camera.updateProjectionMatrix();
-      }
-      renderer.render(scene, camera);
-    }
-    animate();
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      container.removeChild(canvas);
-      renderer.dispose();
-      dracoLoader.dispose();
-      scene.clear();
-    };
-  }, [url]);
-
-  return (
-    <div ref={containerRef} className="w-full h-full relative">
-      {!loaded && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-white/30 text-sm animate-pulse">Loading 3D model...</div>
-        </div>
-      )}
     </div>
   );
 }
