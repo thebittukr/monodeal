@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db, schema } from "@/lib/db";
 import { eq } from "drizzle-orm";
-import { getSessionUser } from "@/lib/auth/session";
+import { getSessionUser, ensureUserProfile } from "@/lib/auth/session";
 import { z } from "zod";
 
 // GET — fetch my profile + stats
@@ -9,6 +9,9 @@ export async function GET() {
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Auth required" }, { status: 401 });
+
+    // Auto-create profile if it doesn't exist (first login)
+    await ensureUserProfile(user.id, user.email, user.name);
 
     // Profile
     const [profile] = await db.select().from(schema.userProfiles)

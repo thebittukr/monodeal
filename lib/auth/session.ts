@@ -103,19 +103,18 @@ export async function ensureUserProfile(
     .slice(0, 15);
   const username = `${baseUsername}${Math.floor(Math.random() * 999)}`;
 
-  // Create profile + credits + rating in a batch
-  await db.insert(schema.userProfiles).values({
-    userId,
-    username,
-  });
+  // Create profile + credits + rating (ignore if already exists)
+  try {
+    await db.insert(schema.userProfiles).values({ userId, username }).onConflictDoNothing();
+  } catch { /* ignore */ }
 
-  await db.insert(schema.credits).values({
-    userId,
-  });
+  try {
+    await db.insert(schema.credits).values({ userId }).onConflictDoNothing();
+  } catch { /* ignore */ }
 
-  await db.insert(schema.userRatings).values({
-    userId,
-  });
+  try {
+    await db.insert(schema.userRatings).values({ userId }).onConflictDoNothing();
+  } catch { /* ignore */ }
 
   // Give starter girlfriends (the 4 free ones)
   const starters = await db
@@ -124,17 +123,19 @@ export async function ensureUserProfile(
     .where(eq(schema.girlfriends.isStarter, true));
 
   if (starters.length > 0) {
-    await db.insert(schema.userGirlfriends).values(
-      starters.map((gf, i) => ({
-        userId,
-        girlfriendId: gf.id,
-        equipped: i === 0, // equip the first one by default
-      }))
-    );
+    try {
+      await db.insert(schema.userGirlfriends).values(
+        starters.map((gf, i) => ({
+          userId,
+          girlfriendId: gf.id,
+          equipped: i === 0,
+        }))
+      ).onConflictDoNothing();
+    } catch { /* ignore duplicates */ }
   }
 
   // Create risk profile for fraud tracking
-  await db.insert(schema.playerRiskProfiles).values({
-    userId,
-  });
+  try {
+    await db.insert(schema.playerRiskProfiles).values({ userId }).onConflictDoNothing();
+  } catch { /* ignore */ }
 }
