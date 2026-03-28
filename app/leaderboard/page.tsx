@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Nav from "@/components/Nav";
 
 interface RankedPlayer {
   rank: number;
@@ -44,17 +45,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      {/* Nav */}
-      <nav className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/5">
-        <a href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-sm font-black">P</div>
-          <span className="text-white font-bold hidden sm:block">Property<span className="text-violet-400">Rush</span></span>
-        </a>
-        <div className="flex items-center gap-2">
-          <a href="/partners" className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white text-xs font-medium transition">Dates</a>
-          <a href="/credits" className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white text-xs font-medium transition">Credits</a>
-        </div>
-      </nav>
+      <Nav />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
         <h1 className="text-2xl sm:text-3xl font-black mb-1">Leaderboard</h1>

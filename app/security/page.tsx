@@ -1,12 +1,9 @@
+import Nav from "@/components/Nav";
+
 export default function SecurityPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      <nav className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/5">
-        <a href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-sm font-black">P</div>
-          <span className="text-white font-bold">Property<span className="text-violet-400">Rush</span></span>
-        </a>
-      </nav>
+      <Nav />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <h1 className="text-3xl sm:text-4xl font-black mb-2">Security</h1>

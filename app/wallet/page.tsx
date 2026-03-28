@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Nav from "@/components/Nav";
 
 export default function WalletPage() {
   const [wallet, setWallet] = useState<any>(null);
@@ -28,16 +29,7 @@ export default function WalletPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      <nav className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/5">
-        <a href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-sm font-black">P</div>
-          <span className="text-white font-bold hidden sm:block">Property<span className="text-violet-400">Rush</span></span>
-        </a>
-        <div className="flex gap-2">
-          <a href="/credits" className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white text-xs font-medium transition">Credits</a>
-          <a href="/profile" className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white text-xs font-medium transition">Profile</a>
-        </div>
-      </nav>
+      <Nav />
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
         <h1 className="text-2xl font-black mb-1">Wallet</h1>
