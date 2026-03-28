@@ -1,5 +1,5 @@
 /**
- * Leaderboard API — rankings by Elo, wins, earnings.
+ * Leaderboard API — rankings combining real players + bots
  */
 
 import { NextResponse } from "next/server";
@@ -8,31 +8,13 @@ import { sql, desc } from "drizzle-orm";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const type = searchParams.get("type") || "elo"; // elo | wins | earnings
+  const type = searchParams.get("type") || "elo";
   const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
 
   try {
-    let orderCol;
-    switch (type) {
-      case "wins":
-        orderCol = desc(schema.userRatings.gamesWon);
-        break;
-      case "earnings":
-        orderCol = desc(schema.userRatings.totalEarnings);
-        break;
-      default:
-        orderCol = desc(schema.userRatings.eloRating);
-    }
-
-    const rankings = await db
+    // Real players
+    const players = await db
       .select({
-        rank: sql<number>`ROW_NUMBER() OVER (ORDER BY ${
-          type === "wins"
-            ? schema.userRatings.gamesWon
-            : type === "earnings"
-            ? schema.userRatings.totalEarnings
-            : schema.userRatings.eloRating
-        } DESC)`.as("rank"),
         userId: schema.userRatings.userId,
         username: schema.userProfiles.username,
         eloRating: schema.userRatings.eloRating,
@@ -42,16 +24,65 @@ export async function GET(req: Request) {
         winStreak: schema.userRatings.winStreak,
         bestStreak: schema.userRatings.bestStreak,
         totalEarnings: schema.userRatings.totalEarnings,
+        countryCode: schema.userProfiles.countryCode,
       })
       .from(schema.userRatings)
-      .leftJoin(
-        schema.userProfiles,
-        sql`${schema.userRatings.userId} = ${schema.userProfiles.userId}`
-      )
-      .orderBy(orderCol)
-      .limit(limit);
+      .leftJoin(schema.userProfiles, sql`${schema.userRatings.userId} = ${schema.userProfiles.userId}`)
+      .limit(100);
 
-    // Most popular girlfriends
+    // Bots
+    const bots = await db
+      .select({
+        botId: schema.botProfiles.botId,
+        displayName: schema.botProfiles.displayName,
+        eloRating: schema.botProfiles.eloRating,
+        tier: schema.botProfiles.tier,
+        gamesPlayed: schema.botProfiles.gamesPlayed,
+        gamesWon: schema.botProfiles.gamesWon,
+        countryCode: schema.botProfiles.countryCode,
+      })
+      .from(schema.botProfiles)
+      .limit(100);
+
+    // Combine into unified format
+    const combined = [
+      ...players.map(p => ({
+        userId: p.userId,
+        username: p.username || "Anonymous",
+        eloRating: p.eloRating || 1000,
+        tier: p.tier || "bronze",
+        gamesPlayed: p.gamesPlayed || 0,
+        gamesWon: p.gamesWon || 0,
+        winStreak: p.winStreak || 0,
+        bestStreak: p.bestStreak || 0,
+        totalEarnings: p.totalEarnings || 0,
+        countryCode: p.countryCode,
+      })),
+      ...bots.map(b => ({
+        userId: b.botId,
+        username: b.displayName,
+        eloRating: b.eloRating || 1000,
+        tier: b.tier || "bronze",
+        gamesPlayed: b.gamesPlayed || 0,
+        gamesWon: b.gamesWon || 0,
+        winStreak: 0,
+        bestStreak: 0,
+        totalEarnings: 0,
+        countryCode: b.countryCode,
+      })),
+    ];
+
+    // Sort
+    combined.sort((a, b) => {
+      if (type === "wins") return b.gamesWon - a.gamesWon;
+      if (type === "earnings") return b.totalEarnings - a.totalEarnings;
+      return b.eloRating - a.eloRating;
+    });
+
+    // Add rank and limit
+    const rankings = combined.slice(0, limit).map((p, i) => ({ ...p, rank: i + 1 }));
+
+    // Most popular dates
     const popularGirlfriends = await db
       .select({
         id: schema.girlfriends.id,

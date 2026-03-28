@@ -3,10 +3,16 @@
 import { useState, useEffect } from "react";
 import Nav from "@/components/Nav";
 
+function flag(code: string | null) {
+  if (!code) return "";
+  try { return String.fromCodePoint(...code.toUpperCase().split("").map(c => 0x1F1E6 + c.charCodeAt(0) - 65)); } catch { return ""; }
+}
+
 interface RankedPlayer {
   rank: number;
   userId: string;
   username: string | null;
+  countryCode: string | null;
   eloRating: number;
   tier: string;
   gamesPlayed: number;
@@ -98,7 +104,7 @@ export default function LeaderboardPage() {
                       } flex items-center justify-center text-sm font-black text-white mb-2`}>
                         {(p.username || "?")[0].toUpperCase()}
                       </div>
-                      <div className="text-xs font-bold text-white truncate max-w-full">{p.username || "Anonymous"}</div>
+                      <div className="text-xs font-bold text-white truncate max-w-full">{flag(p.countryCode)} {p.username || "Anonymous"}</div>
                       <div className={`text-[10px] ${tierCfg.color}`}>{tierCfg.icon} {p.eloRating}</div>
                       <div className={`${height} w-full bg-gradient-to-t ${
                         place === 1 ? "from-amber-600/20 to-amber-400/5" : place === 2 ? "from-slate-500/20 to-slate-300/5" : "from-amber-800/20 to-amber-600/5"
@@ -125,7 +131,7 @@ export default function LeaderboardPage() {
                     {(p.username || "?")[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-white truncate">{p.username || "Anonymous"}</div>
+                    <div className="text-sm font-semibold text-white truncate">{flag(p.countryCode)} {p.username || "Anonymous"}</div>
                     <div className={`text-[10px] ${tierCfg.color}`}>{tierCfg.icon} {p.tier?.toUpperCase()}</div>
                   </div>
                   <div className="text-right shrink-0">
