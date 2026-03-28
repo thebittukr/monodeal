@@ -68,7 +68,7 @@ export default function CasinoBackground({
       }} />
 
       <div className="hidden sm:block" style={{ position: "fixed", bottom: 0, right: 0, zIndex: 25, pointerEvents: "none", width: 280 }}>
-        <img src="/dates/crimson.gif" alt="" style={{ width: "100%", }} />
+        <img src="/dates/crimson.gif" alt="" style={{ width: "100%", mixBlendMode: "multiply" }} />
         {showBubble && (
           <div style={{
             position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
@@ -82,7 +82,7 @@ export default function CasinoBackground({
       </div>
 
       <div className="sm:hidden" style={{ position: "fixed", bottom: 0, right: -10, zIndex: 25, pointerEvents: "none", width: 120 }}>
-        <img src="/dates/crimson.gif" alt="" style={{ width: "100%", }} />
+        <img src="/dates/crimson.gif" alt="" style={{ width: "100%", mixBlendMode: "multiply" }} />
       </div>
     </div>
   );
