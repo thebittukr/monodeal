@@ -564,7 +564,8 @@ function ModelCanvas({ url, width, height, spinDir = 1 }) {
       model.scale.setScalar(scale);
       model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
       scene.add(model);
-      camera.position.set(0, size.y * scale * 0.42, size.y * scale * 1.1);
+      // Frame full body — camera pulled back enough to see head to toe
+      camera.position.set(0, size.y * scale * 0.45, size.y * scale * 1.5);
       camera.lookAt(0, size.y * scale * 0.42, 0);
       if (gltf.animations.length > 0) { mixer = new THREE.AnimationMixer(model); mixer.clipAction(gltf.animations[0]).play(); }
       setVisible(true);
@@ -626,8 +627,8 @@ function WinnerOverlay({ winnerName, isMe, fairnessProof, onPlayAgain }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95">
       {/* 3D Models — dates celebrating */}
-      <div className="hidden sm:block absolute right-0 bottom-0 pointer-events-none"><ModelCanvas url="/models/skye.glb" width={280} height={580} spinDir={1} /></div>
-      <div className="hidden md:block absolute left-0 bottom-0 pointer-events-none"><ModelCanvas url="/models/crimson.glb" width={240} height={520} spinDir={-1} /></div>
+      <div className="hidden sm:block absolute right-4 bottom-0 pointer-events-none" style={{maxHeight:"70vh"}}><ModelCanvas url="/models/skye.glb" width={200} height={450} spinDir={1} /></div>
+      <div className="hidden md:block absolute left-4 bottom-0 pointer-events-none" style={{maxHeight:"70vh"}}><ModelCanvas url="/models/crimson.glb" width={180} height={400} spinDir={-1} /></div>
 
       {/* Result Card */}
       <div className="relative z-10 bg-slate-900/95 border border-white/10 rounded-2xl p-8 text-center shadow-2xl max-w-sm w-full mx-4">
