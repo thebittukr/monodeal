@@ -156,7 +156,8 @@ export async function POST(req) {
       if (!room) return err("Room not found", 404);
 
       const updated = processMove(room, playerId, move);
-      runBotTurns(updated);
+      // Don't run bot turns here — let the GET poll handle it with proper delays
+      // runBotTurns only runs on state polls, giving bots time to "think"
       await setRoom(roomId, updated);
       return ok({ ok: true });
     }
@@ -170,8 +171,7 @@ export async function POST(req) {
       do { roomId = genRoomId(); } while (await getRoom(roomId));
 
       const { room, playerId } = createSoloRoom(roomId, playerName.trim(), avatarId ?? 15);
-      // Run bot turns if first player is a bot (safety check)
-      runBotTurns(room);
+      // Bot turns will be triggered by the first GET poll with proper delays
       await setRoom(roomId, room);
       return ok({ roomId, playerId });
     }
@@ -204,7 +204,7 @@ export async function POST(req) {
 
       removeFromQueue(roomId).catch(() => {});
       forceStart(room, playerId);
-      runBotTurns(room);
+      // Bot turns handled by GET polls with delays — not here
       await setRoom(roomId, room);
       return ok({ ok: true });
     }
