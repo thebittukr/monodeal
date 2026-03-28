@@ -75,7 +75,7 @@ export default function CasinoBackground({
             position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none",
             background: "linear-gradient(to right, rgba(1,1,8,1) 0%, transparent 15%), linear-gradient(to left, rgba(1,1,8,0.8) 0%, transparent 10%), linear-gradient(to top, rgba(1,1,8,1) 0%, transparent 20%)",
           }} />
-          <img src="/dates/crimson.gif" alt="" style={{ width: "100%", display: "block" }} />
+          <video src="/dates/crimson.mp4" autoPlay loop muted playsInline style={{ width: "100%", display: "block" }} />
         </div>
         {showBubble && (
           <div style={{
@@ -96,7 +96,7 @@ export default function CasinoBackground({
             position: "absolute", inset: 0, zIndex: 2,
             background: "linear-gradient(to right, rgba(1,1,8,1) 0%, transparent 20%), linear-gradient(to top, rgba(1,1,8,1) 0%, transparent 25%)",
           }} />
-          <img src="/dates/crimson.gif" alt="" style={{ width: "100%", display: "block" }} />
+          <video src="/dates/crimson.mp4" autoPlay loop muted playsInline style={{ width: "100%", display: "block" }} />
         </div>
       </div>
     </div>
