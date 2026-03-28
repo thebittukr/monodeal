@@ -56,7 +56,11 @@ export default function MusicPlayer({ city, enabled, onToggle }) {
             style={{
               height: loading ? 4 : undefined,
               background: "#818cf8",
-              animation: loading ? "none" : `musicBar ${0.6 + i * 0.2}s ease-in-out infinite alternate`,
+              animationName: loading ? "none" : "musicBar",
+              animationDuration: `${0.6 + i * 0.2}s`,
+              animationTimingFunction: "ease-in-out",
+              animationIterationCount: "infinite",
+              animationDirection: "alternate",
               animationDelay: `${i * 0.15}s`,
               minHeight: 3,
               maxHeight: 14,
