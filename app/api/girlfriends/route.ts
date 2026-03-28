@@ -69,10 +69,10 @@ export async function GET(req: Request) {
     .orderBy(sql`
       CASE WHEN is_starter = true THEN 0 ELSE 1 END,
       CASE rarity
-        WHEN 'legendary' THEN 1
-        WHEN 'epic' THEN 2
-        WHEN 'rare' THEN 3
-        WHEN 'common' THEN 4
+        WHEN 'common' THEN 1
+        WHEN 'rare' THEN 2
+        WHEN 'epic' THEN 3
+        WHEN 'legendary' THEN 4
       END
     `);
 
