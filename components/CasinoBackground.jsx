@@ -67,8 +67,16 @@ export default function CasinoBackground({
           : `radial-gradient(ellipse 70% 50% at 15% 100%, ${c1}30 0%, transparent 55%), radial-gradient(ellipse 70% 50% at 85% 100%, ${c2}30 0%, transparent 55%), linear-gradient(180deg, #010108 0%, #04010e 60%, #080018 100%)`,
       }} />
 
-      <div className="hidden sm:block" style={{ position: "fixed", bottom: 0, right: 0, zIndex: 25, pointerEvents: "none", width: 280 }}>
-        <img src="/dates/crimson.gif" alt="" style={{ width: "100%", mixBlendMode: "multiply" }} />
+      {/* Desktop character — GIF in rounded container with gradient fade */}
+      <div className="hidden sm:block" style={{ position: "fixed", bottom: 0, right: 0, zIndex: 25, pointerEvents: "none", width: 300 }}>
+        <div style={{ position: "relative" }}>
+          {/* Gradient mask that fades edges into the dark background */}
+          <div style={{
+            position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none",
+            background: "linear-gradient(to right, rgba(1,1,8,1) 0%, transparent 15%), linear-gradient(to left, rgba(1,1,8,0.8) 0%, transparent 10%), linear-gradient(to top, rgba(1,1,8,1) 0%, transparent 20%)",
+          }} />
+          <img src="/dates/crimson.gif" alt="" style={{ width: "100%", display: "block" }} />
+        </div>
         {showBubble && (
           <div style={{
             position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
@@ -81,8 +89,15 @@ export default function CasinoBackground({
         )}
       </div>
 
-      <div className="sm:hidden" style={{ position: "fixed", bottom: 0, right: -10, zIndex: 25, pointerEvents: "none", width: 120 }}>
-        <img src="/dates/crimson.gif" alt="" style={{ width: "100%", mixBlendMode: "multiply" }} />
+      {/* Mobile */}
+      <div className="sm:hidden" style={{ position: "fixed", bottom: 0, right: -10, zIndex: 25, pointerEvents: "none", width: 130 }}>
+        <div style={{ position: "relative" }}>
+          <div style={{
+            position: "absolute", inset: 0, zIndex: 2,
+            background: "linear-gradient(to right, rgba(1,1,8,1) 0%, transparent 20%), linear-gradient(to top, rgba(1,1,8,1) 0%, transparent 25%)",
+          }} />
+          <img src="/dates/crimson.gif" alt="" style={{ width: "100%", display: "block" }} />
+        </div>
       </div>
     </div>
   );
