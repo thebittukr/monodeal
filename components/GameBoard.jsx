@@ -378,7 +378,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
           </div>
 
           {/* ── MY HAND — Fixed at bottom on mobile, inline on desktop ── */}
-          <div className="fixed md:relative bottom-0 left-0 right-0 md:bottom-auto z-40 bg-slate-950/95 md:bg-black/40 backdrop-blur-md md:backdrop-blur-none flex-shrink-0 overflow-visible border-t border-white/5 safe-bottom">
+          <div className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-md flex-shrink-0 overflow-visible border-t border-white/5 safe-bottom">
             {/* Errors */}
             {(error || actionError) && (
               <div className="mx-3 mt-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[11px]">{error || actionError}</div>

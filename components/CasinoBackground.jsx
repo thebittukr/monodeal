@@ -86,29 +86,50 @@ export default function CasinoBackground({
           : `radial-gradient(ellipse 70% 50% at 15% 100%, ${c1}30 0%, transparent 55%), radial-gradient(ellipse 70% 50% at 85% 100%, ${c2}30 0%, transparent 55%), linear-gradient(180deg, #010108 0%, #04010e 60%, #080018 100%)`,
       }} />
 
-      {/* Desktop: Date character in white card */}
-      <div className="hidden sm:block" style={{ position: "fixed", bottom: 10, right: 10, zIndex: 15, pointerEvents: "none" }} role="presentation">
+      {/* Desktop: Date character */}
+      <div className="hidden sm:block" style={{ position: "fixed", bottom: 10, right: 10, zIndex: 15, pointerEvents: "none" }}>
         <div style={{ background: "white", borderRadius: 20, overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", width: 220 }}>
           <img src={dateImg} alt="" style={{ width: "100%", display: "block" }} />
         </div>
-        {showBubble && (
-          <div style={{
-            position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
-            background: "rgba(15,10,30,0.93)", border: "1px solid rgba(180,130,255,0.35)",
-            borderRadius: 12, padding: "6px 12px", fontSize: 12, fontWeight: 600,
-            color: "#ead8ff", whiteSpace: "nowrap", zIndex: 30,
-          }}>
-            {bubble}
-          </div>
-        )}
       </div>
 
-      {/* Mobile */}
-      <div className="sm:hidden" style={{ position: "fixed", bottom: 5, right: 5, zIndex: 15, pointerEvents: "none" }}>
-        <div style={{ background: "white", borderRadius: 14, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", width: 100 }}>
+      {/* Mobile: character above card dock (bottom: 200px to clear fixed cards) */}
+      <div className="sm:hidden" style={{ position: "fixed", bottom: 200, right: 5, zIndex: 15, pointerEvents: "none" }}>
+        <div style={{ background: "white", borderRadius: 14, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", width: 80 }}>
           <img src={dateImg} alt="" style={{ width: "100%", display: "block" }} />
         </div>
       </div>
+
+      {/* Speech bubble — SEPARATE from character, higher z-index so it's always visible */}
+      {showBubble && (
+        <div className="hidden sm:block" style={{
+          position: "fixed", bottom: 240, right: 10, zIndex: 35, pointerEvents: "none",
+          width: 220, textAlign: "center",
+        }}>
+          <div style={{
+            display: "inline-block",
+            background: "rgba(15,10,30,0.93)", border: "1px solid rgba(180,130,255,0.35)",
+            borderRadius: 12, padding: "6px 12px", fontSize: 12, fontWeight: 600,
+            color: "#ead8ff", whiteSpace: "nowrap",
+            boxShadow: "0 2px 16px rgba(120,60,200,0.4)",
+          }}>
+            {bubble}
+          </div>
+        </div>
+      )}
+      {showBubble && (
+        <div className="sm:hidden" style={{
+          position: "fixed", bottom: 290, right: 5, zIndex: 35, pointerEvents: "none",
+        }}>
+          <div style={{
+            background: "rgba(15,10,30,0.93)", border: "1px solid rgba(180,130,255,0.35)",
+            borderRadius: 10, padding: "4px 10px", fontSize: 10, fontWeight: 600,
+            color: "#ead8ff", whiteSpace: "nowrap",
+          }}>
+            {bubble}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
