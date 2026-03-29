@@ -400,7 +400,7 @@ export default function RoomPage() {
 
       {/* Board */}
       <div className="flex-1 overflow-hidden">
-        <GameBoard state={state} myId={myId} onMove={handleMove} error={moveError} />
+        <GameBoard state={state} myId={myId} onMove={handleMove} error={moveError} equippedDate={equippedDate} />
       </div>
       </div>
     </div>

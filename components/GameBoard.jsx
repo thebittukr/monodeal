@@ -26,7 +26,7 @@ function countryFlag(code) {
 // MAIN COMPONENT
 // ══════════════════════════════════════════════════════════════════════════════
 
-export default function GameBoard({ state, myId, onMove, error }) {
+export default function GameBoard({ state, myId, onMove, error, equippedDate }) {
   const [selectedCard,   setSelectedCard]   = useState(null);
   const [modalMode,      setModalMode]      = useState(null);
   const [targetPlayer,   setTargetPlayer]   = useState(null);
@@ -339,6 +339,16 @@ export default function GameBoard({ state, myId, onMove, error }) {
                   <div className="flex items-center gap-1.5">
                     <span className="text-white font-bold text-xs">{me?.name}</span>
                     <span className="text-violet-400 text-[10px]">(You)</span>
+                    {equippedDate && (
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                        equippedDate.rarity === "legendary" ? "bg-amber-500/20 text-amber-400" :
+                        equippedDate.rarity === "epic" ? "bg-purple-500/20 text-purple-400" :
+                        equippedDate.rarity === "rare" ? "bg-blue-500/20 text-blue-400" :
+                        "bg-slate-700 text-slate-400"
+                      }`}>
+                        {equippedDate.name}
+                      </span>
+                    )}
                   </div>
                   <div className="text-slate-500 text-[10px]">
                     ${bankTotal(me?.bank)}M bank · <span className={myCompletedSets >= 2 ? "text-amber-400 font-bold" : ""}>{myCompletedSets}/3 sets</span>
