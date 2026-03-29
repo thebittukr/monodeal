@@ -459,7 +459,7 @@ export default function HomePage() {
         </footer>
 
         {/* ── Mobile Bottom Nav ────────────────────────────────────────── */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 backdrop-blur-md border-t border-white/5 px-2 py-1.5 flex justify-around">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 backdrop-blur-md border-t border-white/5 px-2 py-1.5 flex justify-around safe-bottom">
           <MobileNavBtn href="/" icon="🏠" label="Home" active />
           <MobileNavBtn href="/cards" icon="🃏" label="Cards" />
           <MobileNavBtn href="/credits" icon="💰" label="Credits" />

@@ -164,7 +164,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
   // ══════════════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden">
+    <div className="flex flex-col h-full w-full overflow-hidden" style={{ minHeight: "100dvh", maxHeight: "100dvh" }}>
 
       {/* ── Modals (all game logic modals — preserved exactly) ──────────── */}
       {state.phase === "ended" && (
@@ -274,10 +274,11 @@ export default function GameBoard({ state, myId, onMove, error }) {
       {/* ═══════════════════════════════════════════════════════════════════
           MAIN LAYOUT — Table (players + assets) | Sidebar (log + hand)
       ═══════════════════════════════════════════════════════════════════ */}
+      {/* ═══ MAIN LAYOUT: Mobile = 3 layers (header/scroll/fixed-cards) ═══ */}
       <div className="flex-1 min-h-0 flex flex-col md:grid md:grid-cols-[1fr_320px] md:grid-rows-[1fr_auto]">
 
-        {/* ── TABLE: All Players ──────────────────────────────────────── */}
-        <div className="md:row-span-2 md:border-r border-white/5 overflow-y-auto min-h-0 flex flex-col">
+        {/* ── SCROLLABLE AREA: Players + Assets ──────────────────────── */}
+        <div className="md:row-span-2 md:border-r border-white/5 overflow-y-auto min-h-0 flex flex-col" style={{ paddingBottom: "200px" }}>
 
           {/* Opponents */}
           <div className="flex-shrink-0 px-2 pt-2">
@@ -376,8 +377,8 @@ export default function GameBoard({ state, myId, onMove, error }) {
             </div>
           </div>
 
-          {/* ── MY HAND ───────────────────────────────────────────────── */}
-          <div className="bg-black/40 flex-shrink-0 overflow-visible border-t border-white/5">
+          {/* ── MY HAND — Fixed at bottom on mobile, inline on desktop ── */}
+          <div className="fixed md:relative bottom-0 left-0 right-0 md:bottom-auto z-40 bg-slate-950/95 md:bg-black/40 backdrop-blur-md md:backdrop-blur-none flex-shrink-0 overflow-visible border-t border-white/5 safe-bottom">
             {/* Errors */}
             {(error || actionError) && (
               <div className="mx-3 mt-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[11px]">{error || actionError}</div>
@@ -403,7 +404,7 @@ export default function GameBoard({ state, myId, onMove, error }) {
             </div>
 
             {/* Fan hand */}
-            <div className="relative flex items-end justify-center pb-2 pt-1 overflow-visible" style={{ height: 175, perspective: "900px", perspectiveOrigin: "50% 200%", transform: "scale(1.15)", transformOrigin: "bottom center" }}>
+            <div className="relative flex items-end justify-center pb-2 pt-1 overflow-visible" style={{ height: 150, perspective: "900px", perspectiveOrigin: "50% 200%", transform: "scale(1)", transformOrigin: "bottom center" }}>
               {(me?.hand ?? []).map((card, i) => {
                 const total  = me.hand.length;
                 const center = (total - 1) / 2;

@@ -87,7 +87,7 @@ export default function CasinoBackground({
       }} />
 
       {/* Desktop: Date character in white card */}
-      <div className="hidden sm:block" style={{ position: "fixed", bottom: 10, right: 10, zIndex: 25, pointerEvents: "none" }} role="presentation">
+      <div className="hidden sm:block" style={{ position: "fixed", bottom: 10, right: 10, zIndex: 15, pointerEvents: "none" }} role="presentation">
         <div style={{ background: "white", borderRadius: 20, overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", width: 220 }}>
           <img src={dateImg} alt="" style={{ width: "100%", display: "block" }} />
         </div>
@@ -104,7 +104,7 @@ export default function CasinoBackground({
       </div>
 
       {/* Mobile */}
-      <div className="sm:hidden" style={{ position: "fixed", bottom: 5, right: 5, zIndex: 25, pointerEvents: "none" }}>
+      <div className="sm:hidden" style={{ position: "fixed", bottom: 5, right: 5, zIndex: 15, pointerEvents: "none" }}>
         <div style={{ background: "white", borderRadius: 14, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", width: 100 }}>
           <img src={dateImg} alt="" style={{ width: "100%", display: "block" }} />
         </div>
