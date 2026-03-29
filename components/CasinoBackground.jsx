@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { narrateSpeak, isNarratorEnabled } from "@/lib/narrator";
 
 export const CITY_CONFIGS = {
   lasvegas:   { label: "Las Vegas",        neons: ["#ffd700","#ff6600","#ff3333"] },
@@ -45,6 +46,7 @@ export default function CasinoBackground({
     const line = CARD_REACT_LINES[Math.floor(Math.random() * CARD_REACT_LINES.length)];
     setBubble(line);
     setShowBubble(true);
+    if (isNarratorEnabled()) narrateSpeak(line);
     const t = setTimeout(() => setShowBubble(false), 3500);
     return () => clearTimeout(t);
   }, [reactionTrigger]);
@@ -54,6 +56,7 @@ export default function CasinoBackground({
     const line = LOSS_LINES[Math.floor(Math.random() * LOSS_LINES.length)];
     setBubble(line);
     setShowBubble(true);
+    if (isNarratorEnabled()) narrateSpeak(line);
     const t = setTimeout(() => setShowBubble(false), 4000);
     return () => clearTimeout(t);
   }, [lossTarget]);
@@ -67,6 +70,7 @@ export default function CasinoBackground({
       const line = lines[Math.floor(Math.random() * lines.length)];
       setBubble(line);
       setShowBubble(true);
+      if (isNarratorEnabled()) narrateSpeak(line);
       setTimeout(() => setShowBubble(false), 3500);
       timer = setTimeout(speak, 20000 + Math.random() * 20000);
     }
@@ -86,18 +90,14 @@ export default function CasinoBackground({
           : `radial-gradient(ellipse 70% 50% at 15% 100%, ${c1}30 0%, transparent 55%), radial-gradient(ellipse 70% 50% at 85% 100%, ${c2}30 0%, transparent 55%), linear-gradient(180deg, #010108 0%, #04010e 60%, #080018 100%)`,
       }} />
 
-      {/* Desktop: Date character */}
-      <div className="hidden sm:block" style={{ position: "fixed", bottom: 10, right: 10, zIndex: 15, pointerEvents: "none" }}>
-        <div style={{ background: "white", borderRadius: 20, overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", width: 220 }}>
-          <img src={dateImg} alt="" style={{ width: "100%", display: "block" }} />
-        </div>
+      {/* Desktop: Date character — no container, blends with dark bg */}
+      <div className="hidden sm:block" style={{ position: "fixed", bottom: 10, right: 10, zIndex: 15, pointerEvents: "none", width: 200 }}>
+        <img src={dateImg} alt="" style={{ width: "100%", display: "block", borderRadius: 16, mixBlendMode: "screen" }} />
       </div>
 
-      {/* Mobile: character above card dock (bottom: 200px to clear fixed cards) */}
-      <div className="sm:hidden" style={{ position: "fixed", bottom: 200, right: 5, zIndex: 15, pointerEvents: "none" }}>
-        <div style={{ background: "white", borderRadius: 14, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", width: 80 }}>
-          <img src={dateImg} alt="" style={{ width: "100%", display: "block" }} />
-        </div>
+      {/* Mobile: character above card dock */}
+      <div className="sm:hidden" style={{ position: "fixed", bottom: 200, right: 5, zIndex: 15, pointerEvents: "none", width: 80 }}>
+        <img src={dateImg} alt="" style={{ width: "100%", display: "block", borderRadius: 10, mixBlendMode: "screen" }} />
       </div>
 
       {/* Speech bubble — SEPARATE from character, higher z-index so it's always visible */}
