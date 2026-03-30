@@ -90,14 +90,18 @@ export default function CasinoBackground({
           : `radial-gradient(ellipse 70% 50% at 15% 100%, ${c1}30 0%, transparent 55%), radial-gradient(ellipse 70% 50% at 85% 100%, ${c2}30 0%, transparent 55%), linear-gradient(180deg, #010108 0%, #04010e 60%, #080018 100%)`,
       }} />
 
-      {/* Desktop: Date character — screen blend makes black bg transparent */}
-      <div className="hidden sm:block" style={{ position: "fixed", bottom: 10, right: 10, zIndex: 45, pointerEvents: "none", width: 220 }}>
-        <img src={dateImg} alt="" style={{ width: "100%", display: "block", mixBlendMode: "screen", filter: "brightness(1.2)" }} />
+      {/* Desktop: Date character — sits above the card dock */}
+      <div className="hidden sm:block" style={{ position: "fixed", bottom: 200, right: 10, zIndex: 45, pointerEvents: "none", width: 150 }}>
+        <div style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.3)" }}>
+          <img src={dateImg} alt="" style={{ width: "100%", display: "block" }} />
+        </div>
       </div>
 
       {/* Mobile: character above card dock */}
-      <div className="sm:hidden" style={{ position: "fixed", bottom: 210, right: 5, zIndex: 45, pointerEvents: "none", width: 80 }}>
-        <img src={dateImg} alt="" style={{ width: "100%", display: "block", mixBlendMode: "screen", filter: "brightness(1.2)" }} />
+      <div className="sm:hidden" style={{ position: "fixed", bottom: 210, right: 5, zIndex: 45, pointerEvents: "none", width: 60 }}>
+        <div style={{ background: "white", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>
+          <img src={dateImg} alt="" style={{ width: "100%", display: "block" }} />
+        </div>
       </div>
 
       {/* Speech bubble — SEPARATE from character, higher z-index so it's always visible */}
