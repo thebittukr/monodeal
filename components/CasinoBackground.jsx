@@ -90,20 +90,24 @@ export default function CasinoBackground({
           : `radial-gradient(ellipse 70% 50% at 15% 100%, ${c1}30 0%, transparent 55%), radial-gradient(ellipse 70% 50% at 85% 100%, ${c2}30 0%, transparent 55%), linear-gradient(180deg, #010108 0%, #04010e 60%, #080018 100%)`,
       }} />
 
-      {/* Desktop: Date character — no container, blends with dark bg */}
-      <div className="hidden sm:block" style={{ position: "fixed", bottom: 10, right: 10, zIndex: 15, pointerEvents: "none", width: 200 }}>
-        <img src={dateImg} alt="" style={{ width: "100%", display: "block", borderRadius: 16, mixBlendMode: "screen" }} />
+      {/* Desktop: Date character — above card dock (z-45), pointer-events none so cards still clickable */}
+      <div className="hidden sm:block" style={{ position: "fixed", bottom: 10, right: 10, zIndex: 45, pointerEvents: "none", width: 200 }}>
+        <div style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.3)" }}>
+          <img src={dateImg} alt="" style={{ width: "100%", display: "block" }} />
+        </div>
       </div>
 
       {/* Mobile: character above card dock */}
-      <div className="sm:hidden" style={{ position: "fixed", bottom: 200, right: 5, zIndex: 15, pointerEvents: "none", width: 80 }}>
-        <img src={dateImg} alt="" style={{ width: "100%", display: "block", borderRadius: 10, mixBlendMode: "screen" }} />
+      <div className="sm:hidden" style={{ position: "fixed", bottom: 210, right: 5, zIndex: 45, pointerEvents: "none", width: 70 }}>
+        <div style={{ background: "white", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>
+          <img src={dateImg} alt="" style={{ width: "100%", display: "block" }} />
+        </div>
       </div>
 
       {/* Speech bubble — SEPARATE from character, higher z-index so it's always visible */}
       {showBubble && (
         <div className="hidden sm:block" style={{
-          position: "fixed", bottom: 240, right: 10, zIndex: 35, pointerEvents: "none",
+          position: "fixed", bottom: 240, right: 10, zIndex: 50, pointerEvents: "none",
           width: 220, textAlign: "center",
         }}>
           <div style={{
@@ -119,7 +123,7 @@ export default function CasinoBackground({
       )}
       {showBubble && (
         <div className="sm:hidden" style={{
-          position: "fixed", bottom: 290, right: 5, zIndex: 35, pointerEvents: "none",
+          position: "fixed", bottom: 290, right: 5, zIndex: 50, pointerEvents: "none",
         }}>
           <div style={{
             background: "rgba(15,10,30,0.93)", border: "1px solid rgba(180,130,255,0.35)",
