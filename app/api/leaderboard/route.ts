@@ -12,6 +12,8 @@ export async function GET(req: Request) {
   const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
 
   try {
+    const adminEmails = new Set((process.env.ADMIN_EMAILS || "").split(",").filter(Boolean));
+
     // Real players
     const players = await db
       .select({
@@ -46,7 +48,11 @@ export async function GET(req: Request) {
 
     // Combine into unified format
     const combined = [
-      ...players.map(p => ({
+      ...players.filter(p => {
+        // Exclude admin users — check by username pattern (admin usernames contain 'admin')
+        const uname = (p.username || "").toLowerCase();
+        return !uname.includes("admin");
+      }).map(p => ({
         userId: p.userId,
         username: p.username || "Anonymous",
         eloRating: p.eloRating || 1000,

@@ -309,6 +309,14 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
                         <div className="flex items-center gap-1.5">
                           <span className="text-white font-bold text-xs truncate">{opp.name}</span>
                           {opp.countryCode && <span className="text-[10px]">{countryFlag(opp.countryCode)}</span>}
+                          {opp.dateInfo && (
+                            <span className={`text-[7px] px-1 py-0.5 rounded font-bold uppercase shrink-0 ${
+                              opp.dateInfo.rarity === "legendary" ? "bg-amber-500/20 text-amber-400" :
+                              opp.dateInfo.rarity === "epic" ? "bg-purple-500/20 text-purple-400" :
+                              opp.dateInfo.rarity === "rare" ? "bg-blue-500/20 text-blue-400" :
+                              "bg-slate-700/50 text-slate-500"
+                            }`}>{opp.dateInfo.name}</span>
+                          )}
                           {isOppTurn && <span className="text-emerald-400 text-[10px] shrink-0">thinking...</span>}
                         </div>
                         <div className="flex gap-3 text-slate-500 text-[10px]">

@@ -66,7 +66,7 @@ export default function HomePage() {
     try {
       const res = await fetch("/api/game", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "createRoom", playerName: name.trim(), maxPlayers, avatarId }),
+        body: JSON.stringify({ action: "createRoom", playerName: name.trim(), maxPlayers, avatarId, dateInfo: equippedDate ? { name: equippedDate.name, rarity: equippedDate.rarity, thumbnailUrl: equippedDate.thumbnailUrl } : null }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -156,7 +156,7 @@ export default function HomePage() {
               setLoading(true);
               fetch("/api/game", {
                 method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "createRoom", playerName: quickName, maxPlayers: 4, avatarId }),
+                body: JSON.stringify({ action: "createRoom", playerName: quickName, maxPlayers: 4, avatarId, dateInfo: equippedDate ? { name: equippedDate.name, rarity: equippedDate.rarity, thumbnailUrl: equippedDate.thumbnailUrl } : null }),
               })
                 .then(r => r.json())
                 .then(data => {

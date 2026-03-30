@@ -84,7 +84,7 @@ export async function POST(req) {
   switch (action) {
     // ── createRoom (with matchmaking — joins existing open room if available) ─
     case "createRoom": {
-      const { playerName, avatarId } = body;
+      const { playerName, avatarId, dateInfo } = body;
       if (!playerName?.trim()) return err("playerName required", 400);
       const mode = body.mode || "free";
 
@@ -94,7 +94,7 @@ export async function POST(req) {
         // Join existing open room
         const existingRoom = await getRoom(match.roomId);
         if (existingRoom && existingRoom.phase === "waiting" && existingRoom.players.length < (existingRoom.roomMaxPlayers ?? 4)) {
-          const { room: updated, playerId } = joinRoom(existingRoom, playerName.trim(), avatarId ?? 15);
+          const { room: updated, playerId } = joinRoom(existingRoom, playerName.trim(), avatarId ?? 15, dateInfo || null);
           // If room is now full, remove from queue
           if (updated.players.length >= (updated.roomMaxPlayers ?? 4)) {
             removeFromQueue(match.roomId).catch(() => {});
@@ -108,7 +108,7 @@ export async function POST(req) {
       let roomId;
       do { roomId = genRoomId(); } while (await getRoom(roomId));
 
-      const room = createRoom(roomId, playerName.trim(), body.maxPlayers ?? 4, avatarId ?? 15);
+      const room = createRoom(roomId, playerName.trim(), body.maxPlayers ?? 4, avatarId ?? 15, dateInfo || null);
       room._meta = { ...(room._meta || {}), mode };
       await setRoom(roomId, room);
 
