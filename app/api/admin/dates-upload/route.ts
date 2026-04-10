@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { db, schema } from "@/lib/db";
+import { eq } from "drizzle-orm";
 import sharp from "sharp";
 import { S3Client, PutObjectCommand, DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 
@@ -116,6 +117,66 @@ export async function POST(req: Request) {
       }).returning();
 
       return NextResponse.json({ ok: true, girlfriend: created, thumbnailUrl, sizeKB });
+    }
+
+    // ── Re-upload image for existing date ─────────────────────────────
+    if (action === "reupload") {
+      const file = formData.get("image") as File;
+      const id = formData.get("id") as string;
+
+      if (!file || !id) {
+        return NextResponse.json({ error: "File and date ID required" }, { status: 400 });
+      }
+
+      // Get existing date to determine slug
+      const [existing] = await db.select().from(schema.girlfriends)
+        .where(eq(schema.girlfriends.id, id)).limit(1);
+      if (!existing) {
+        return NextResponse.json({ error: "Date not found" }, { status: 404 });
+      }
+
+      const slug = existing.name.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const isGif = file.type === "image/gif" || file.name?.endsWith(".gif");
+
+      let compressed: Buffer;
+      let contentType: string;
+      let ext: string;
+
+      if (isGif) {
+        compressed = await sharp(buffer, { animated: true })
+          .resize(400, 400, { fit: "inside", withoutEnlargement: true })
+          .gif({ effort: 7 })
+          .toBuffer();
+        contentType = "image/gif";
+        ext = "gif";
+      } else {
+        compressed = await sharp(buffer)
+          .resize(500, 500, { fit: "inside", withoutEnlargement: true })
+          .webp({ quality: 80 })
+          .toBuffer();
+        contentType = "image/webp";
+        ext = "webp";
+      }
+
+      // Upload to R2 (overwrites existing)
+      const key = `dates/${slug}.${ext}`;
+      await R2.send(new PutObjectCommand({
+        Bucket: R2_BUCKET,
+        Key: key,
+        Body: compressed,
+        ContentType: contentType,
+      }));
+
+      const thumbnailUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${key}` : key;
+      const sizeKB = Math.round(compressed.length / 1024);
+
+      // Update DB with new URL
+      await db.update(schema.girlfriends)
+        .set({ thumbnailUrl })
+        .where(eq(schema.girlfriends.id, id));
+
+      return NextResponse.json({ ok: true, thumbnailUrl, sizeKB });
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });

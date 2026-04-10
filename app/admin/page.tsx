@@ -301,6 +301,8 @@ function DatesTab({ onError }: { onError: (e: string) => void }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>({});
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [reuploadFile, setReuploadFile] = useState<File | null>(null);
+  const [reuploading, setReuploading] = useState(false);
 
   useEffect(() => { load(); }, []);
   function load() { fetch("/api/admin/girlfriends").then(r => r.json()).then(d => d.error ? onError(d.error) : setDates(d.girlfriends || [])); }
@@ -347,16 +349,40 @@ function DatesTab({ onError }: { onError: (e: string) => void }) {
 
   function startEdit(d: any) {
     setEditId(d.id);
+    setReuploadFile(null);
     setEditForm({ name: d.name, rarity: d.rarity, style: d.style, gender: d.gender, priceCredits: d.priceCredits, personality: d.personality || "", description: d.description || "", backstory: d.backstory || "", isStarter: d.isStarter, thumbnailUrl: d.thumbnailUrl || "" });
   }
 
   async function saveEdit() {
     if (!editId) return;
+
+    // If a new image was selected, upload it first
+    if (reuploadFile) {
+      setReuploading(true);
+      try {
+        const fd = new FormData();
+        fd.append("action", "reupload");
+        fd.append("id", editId);
+        fd.append("image", reuploadFile);
+        const res = await fetch("/api/admin/dates-upload", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) { setUploadMsg(`Error: ${data.error}`); setReuploading(false); return; }
+        editForm.thumbnailUrl = data.thumbnailUrl;
+        setUploadMsg(`Image updated → ${data.thumbnailUrl} (${data.sizeKB}KB)`);
+      } catch (err: any) {
+        setUploadMsg(`Upload error: ${err.message}`);
+        setReuploading(false);
+        return;
+      }
+      setReuploading(false);
+    }
+
     await fetch("/api/admin/girlfriends", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "update", id: editId, ...editForm }),
     });
     setEditId(null);
+    setReuploadFile(null);
     load();
   }
 
@@ -400,6 +426,19 @@ function DatesTab({ onError }: { onError: (e: string) => void }) {
             {editId === d.id ? (
               /* ── Edit Mode ─────────────────────────────── */
               <div className="p-3 space-y-2 bg-violet-900/10">
+                {/* Current image + re-upload */}
+                <div className="flex items-start gap-3 bg-black/20 rounded-lg p-2">
+                  {editForm.thumbnailUrl && (
+                    <img src={editForm.thumbnailUrl} alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[9px] text-slate-500 font-bold uppercase mb-1">Replace Image (GIF/PNG/WebP)</p>
+                    <input type="file" accept="image/png,image/gif,image/webp,image/jpeg,.apng"
+                      onChange={e => setReuploadFile(e.target.files?.[0] || null)}
+                      className="text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-violet-600 file:text-white file:text-[9px] file:font-bold file:cursor-pointer w-full" />
+                    {reuploadFile && <p className="text-[9px] text-emerald-400 mt-0.5">New: {reuploadFile.name} ({Math.round(reuploadFile.size / 1024)}KB)</p>}
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <Inp label="Name" value={editForm.name} set={v => setEditForm({...editForm, name: v})} />
                   <Sel label="Rarity" value={editForm.rarity} set={v => setEditForm({...editForm, rarity: v})} opts={["common","rare","epic","legendary"]} />
@@ -411,10 +450,12 @@ function DatesTab({ onError }: { onError: (e: string) => void }) {
                 <Inp label="Personality" value={editForm.personality} set={v => setEditForm({...editForm, personality: v})} />
                 <Inp label="Description" value={editForm.description} set={v => setEditForm({...editForm, description: v})} />
                 <Inp label="Backstory" value={editForm.backstory} set={v => setEditForm({...editForm, backstory: v})} />
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <button onClick={() => setEditForm({...editForm, isStarter: !editForm.isStarter})} className={`px-3 py-1 rounded text-[9px] font-bold ${editForm.isStarter ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-500"}`}>{editForm.isStarter ? "FREE Starter" : "Paid"}</button>
-                  <button onClick={saveEdit} className="px-4 py-1 rounded bg-emerald-600 text-white text-[9px] font-bold">Save</button>
-                  <button onClick={() => setEditId(null)} className="px-4 py-1 rounded bg-slate-700 text-slate-300 text-[9px] font-bold">Cancel</button>
+                  <button onClick={saveEdit} disabled={reuploading} className="px-4 py-1 rounded bg-emerald-600 text-white text-[9px] font-bold disabled:opacity-50">
+                    {reuploading ? "Uploading..." : reuploadFile ? "Upload & Save" : "Save"}
+                  </button>
+                  <button onClick={() => { setEditId(null); setReuploadFile(null); }} className="px-4 py-1 rounded bg-slate-700 text-slate-300 text-[9px] font-bold">Cancel</button>
                 </div>
               </div>
             ) : (
