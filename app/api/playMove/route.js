@@ -49,7 +49,7 @@ export async function POST(req) {
       }
 
       // 6. Validate it's this player's turn (server-authoritative)
-      const currentPlayer = room.players[room.turn];
+      const currentPlayer = room.players[room.turnIndex];
       if (!currentPlayer || currentPlayer.id !== playerId) {
         await logSecurityEvent("wrong_turn", { roomId, playerId, expectedPlayer: currentPlayer?.id }, security.context.ip);
         return { error: "Not your turn", status: 403 };

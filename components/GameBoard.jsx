@@ -242,7 +242,7 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
           </div>
           <div>
             <div className="text-white font-black text-sm leading-none">${state.pot}M</div>
-            <div className="text-slate-600 text-[10px]">Turn {state.turnCount + 1} · {state.deck?.length ?? 0} left</div>
+            <div className="text-slate-600 text-[10px]">Turn {state.turnCount + 1} · {state.deckCount ?? 0} left</div>
           </div>
         </div>
 
