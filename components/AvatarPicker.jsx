@@ -1,12 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
 
-const CATEGORIES = ["All", "Casino", "Action", "Fantasy", "Tech", "Style"];
-
 export default function AvatarPicker({ selected, onSelect }) {
   const [avatars, setAvatars] = useState([]);
-  const [category, setCategory] = useState("All");
   const [loading, setLoading] = useState(true);
+  const [showPaid, setShowPaid] = useState(false);
 
   useEffect(() => {
     fetch("/api/avatars")
@@ -15,11 +13,9 @@ export default function AvatarPicker({ selected, onSelect }) {
       .catch(() => setLoading(false));
   }, []);
 
-  const filtered = category === "All"
-    ? avatars
-    : avatars.filter(a => a.category === category.toLowerCase());
-
-  const selectedAvatar = avatars.find(a => a.id === selected) || avatars[0];
+  const freeAvatars = avatars.filter(a => a.isFree);
+  const paidAvatars = avatars.filter(a => !a.isFree);
+  const selectedAvatar = avatars.find(a => a.id === selected) || freeAvatars[0];
 
   if (loading) return <div className="text-slate-600 text-xs py-4">Loading avatars...</div>;
 
@@ -27,7 +23,7 @@ export default function AvatarPicker({ selected, onSelect }) {
     <div className="w-full">
       {/* Current selection */}
       {selectedAvatar && (
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-3">
           <img
             src={selectedAvatar.imageUrl}
             alt={selectedAvatar.name}
@@ -35,57 +31,81 @@ export default function AvatarPicker({ selected, onSelect }) {
           />
           <div>
             <div className="text-white font-semibold text-sm">{selectedAvatar.name}</div>
-            <div className="text-slate-500 text-xs">
-              {selectedAvatar.isFree ? "Free" : `${selectedAvatar.priceCredits} credits`}
+            <div className={`text-xs font-medium ${selectedAvatar.isFree ? "text-emerald-400" : "text-amber-400"}`}>
+              {selectedAvatar.isFree ? "Free Avatar" : `${selectedAvatar.priceCredits} credits`}
             </div>
           </div>
         </div>
       )}
 
-      {/* Category tabs */}
-      <div className="flex gap-1 mb-2 overflow-x-auto pb-1">
-        {CATEGORIES.map(c => (
-          <button
-            key={c}
-            onClick={() => setCategory(c)}
-            className={`px-2.5 py-1 rounded-lg text-xs font-medium flex-shrink-0 transition-all ${
-              category === c
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-800 text-slate-400 hover:text-white border border-white/10"
-            }`}
-          >
-            {c}
-          </button>
-        ))}
+      {/* Free Avatars Section */}
+      <div className="mb-2">
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">Free</span>
+          <div className="flex-1 h-px bg-emerald-500/20" />
+          <span className="text-[9px] text-slate-600">{freeAvatars.length} avatars</span>
+        </div>
+        <div className="grid grid-cols-5 gap-1.5">
+          {freeAvatars.map(avatar => (
+            <AvatarButton key={avatar.id} avatar={avatar} selected={selected === avatar.id} onSelect={onSelect} />
+          ))}
+        </div>
       </div>
 
-      {/* Avatar grid */}
-      <div className="grid grid-cols-5 gap-1.5 max-h-44 overflow-y-auto pr-0.5">
-        {filtered.map(avatar => (
-          <button
-            key={avatar.id}
-            onClick={() => onSelect(avatar.id)}
-            title={`${avatar.name}${avatar.isFree ? " (Free)" : ` (${avatar.priceCredits}cr)`}`}
-            className={`w-full aspect-square rounded-xl overflow-hidden transition-all border relative ${
-              selected === avatar.id
-                ? "border-indigo-400 scale-105 ring-2 ring-indigo-500/40"
-                : "border-white/10 hover:border-white/30 hover:scale-105"
-            }`}
-          >
-            <img
-              src={avatar.imageUrl}
-              alt={avatar.name}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-            {!avatar.isFree && (
-              <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[8px] text-amber-400 font-bold text-center py-0.5">
-                {avatar.priceCredits}
-              </div>
-            )}
-          </button>
-        ))}
+      {/* Paid Avatars Section */}
+      <div>
+        <button
+          onClick={() => setShowPaid(!showPaid)}
+          className="flex items-center gap-2 w-full mb-1.5 group"
+        >
+          <span className="text-[10px] text-amber-400 font-bold uppercase tracking-widest">Premium</span>
+          <div className="flex-1 h-px bg-amber-500/20" />
+          <span className="text-[9px] text-slate-600">{paidAvatars.length} avatars</span>
+          <span className={`text-slate-600 text-[10px] transition-transform ${showPaid ? "rotate-180" : ""}`}>▼</span>
+        </button>
+
+        {showPaid && (
+          <div className="grid grid-cols-5 gap-1.5 max-h-44 overflow-y-auto pr-0.5">
+            {paidAvatars.map(avatar => (
+              <AvatarButton key={avatar.id} avatar={avatar} selected={selected === avatar.id} onSelect={onSelect} />
+            ))}
+          </div>
+        )}
+
+        {!showPaid && (
+          <div className="grid grid-cols-5 gap-1.5">
+            {paidAvatars.slice(0, 5).map(avatar => (
+              <AvatarButton key={avatar.id} avatar={avatar} selected={selected === avatar.id} onSelect={onSelect} dimmed />
+            ))}
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function AvatarButton({ avatar, selected, onSelect, dimmed }) {
+  return (
+    <button
+      onClick={() => onSelect(avatar.id)}
+      title={`${avatar.name}${avatar.isFree ? " (Free)" : ` (${avatar.priceCredits}cr)`}`}
+      className={`w-full aspect-square rounded-xl overflow-hidden transition-all border relative ${
+        selected
+          ? "border-indigo-400 scale-105 ring-2 ring-indigo-500/40"
+          : "border-white/10 hover:border-white/30 hover:scale-105"
+      } ${dimmed ? "opacity-60" : ""}`}
+    >
+      <img
+        src={avatar.imageUrl}
+        alt={avatar.name}
+        className="w-full h-full object-cover"
+        loading="lazy"
+      />
+      {!avatar.isFree && (
+        <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-[7px] text-amber-400 font-bold text-center py-0.5">
+          {avatar.priceCredits} cr
+        </div>
+      )}
+    </button>
   );
 }
