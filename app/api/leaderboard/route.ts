@@ -54,10 +54,10 @@ export async function GET(req: Request) {
         const combined = [
           ...players.filter(p => {
             const uname = (p.username || "").toLowerCase();
-            return !uname.includes("admin");
+            return !uname.includes("admin") && p.username && p.username !== "Anonymous";
           }).map(p => ({
             userId: p.userId,
-            username: p.username || "Anonymous",
+            username: p.username,
             eloRating: p.eloRating || 1000,
             tier: p.tier || "bronze",
             gamesPlayed: p.gamesPlayed || 0,

@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/useAuth";
 import { useState } from "react";
 
 export default function Nav() {
-  const { user, profile, credits, isAdmin, loading } = useAuth();
+  const { user, profile, credits, isAdmin, avatarUrl, loading } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
 
   async function handleSignOut() {
@@ -55,7 +55,7 @@ export default function Nav() {
               onClick={() => setShowMenu(!showMenu)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-600/20 border border-violet-500/30 hover:bg-violet-600/30 transition text-xs"
             >
-              <img src="/avatar-default.jpg" alt="" className="w-5 h-5 rounded-full object-cover" />
+              <img src={avatarUrl || "/avatar-default.webp"} alt="" className="w-5 h-5 rounded-full object-cover" />
               <span className="text-violet-300 font-medium hidden sm:block">{profile?.username || user.name}</span>
               <span className="text-violet-500 text-[8px]">▼</span>
             </button>

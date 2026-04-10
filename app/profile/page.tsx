@@ -27,14 +27,21 @@ export default function ProfilePage() {
   const [username, setUsername] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [myAvatarUrl, setMyAvatarUrl] = useState("/avatar-default.webp");
 
   useEffect(() => {
-    fetch("/api/profile")
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => {
+    Promise.all([
+      fetch("/api/profile").then((r) => r.ok ? r.json() : null),
+      fetch("/api/avatars").then((r) => r.json()).catch(() => ({ avatars: [] })),
+    ]).then(([d, av]) => {
         if (d?.user) {
           setData(d);
           setUsername(d.profile?.username || "");
+          // Resolve avatar URL
+          if (d.profile?.avatarId && av.avatars?.length) {
+            const match = av.avatars.find((a: any) => a.id === d.profile.avatarId);
+            if (match) setMyAvatarUrl(match.imageUrl);
+          }
         }
         setLoading(false);
       })
@@ -86,7 +93,7 @@ export default function ProfilePage() {
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <img src="/avatar-default.jpg" alt="Avatar" className="w-16 h-16 rounded-2xl object-cover" />
+          <img src={myAvatarUrl} alt="Avatar" className="w-16 h-16 rounded-2xl object-cover" />
           <div>
             {editing ? (
               <div className="flex items-center gap-2">

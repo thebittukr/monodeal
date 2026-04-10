@@ -102,15 +102,15 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
 
   // Resolve player avatar → image URL
   const getAvatarUrl = (player) => {
-    if (!player) return "/avatar-default.jpg";
+    if (!player) return "/avatar-default.webp";
     // Try DB avatar map first, then fall back
     if (player.avatar && avatarMap[player.avatar]) return avatarMap[player.avatar];
     // For old integer-based avatars, try by index
     const keys = Object.keys(avatarMap);
     if (typeof player.avatar === "number" && player.avatar > 0 && player.avatar <= keys.length) {
-      return avatarMap[keys[player.avatar - 1]] || "/avatar-default.jpg";
+      return avatarMap[keys[player.avatar - 1]] || "/avatar-default.webp";
     }
-    return "/avatar-default.jpg";
+    return "/avatar-default.webp";
   };
 
   const pendingForMe      = state.pendingAction && state.pendingAction.toIdx === myIdx;
