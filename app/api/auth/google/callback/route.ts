@@ -72,12 +72,33 @@ export async function GET(req: Request) {
       }).returning();
     }
 
-    // Create session
+    // ── 2FA Check ──────────────────────────────────────────────────────
+    if (user.totpEnabled) {
+      // Create temporary challenge instead of full session
+      const challengeToken = randomBytes(32).toString("hex");
+      const challengeExpiry = new Date(Date.now() + 5 * 60 * 1000);
+      await db.insert(schema.twoFactorChallenges).values({
+        userId: user.id,
+        challengeToken,
+        expiresAt: challengeExpiry,
+      });
+
+      const res = NextResponse.redirect(`${baseUrl}/login/2fa`);
+      res.cookies.set("2fa_challenge", challengeToken, {
+        httpOnly: true,
+        path: "/",
+        maxAge: 300, // 5 minutes
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
+      return res;
+    }
+
+    // ── No 2FA — create session as before ──────────────────────────────
     const token = randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await db.insert(schema.sessions).values({ userId: user.id, token, expiresAt });
 
-    // Redirect to home with session cookie
     const res = NextResponse.redirect(`${baseUrl}/`);
     res.cookies.set("session", token, {
       httpOnly: true,

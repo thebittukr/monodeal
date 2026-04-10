@@ -168,6 +168,9 @@ export default function ProfilePage() {
           <a href="/responsible-gaming" className="block px-4 py-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 text-slate-400 text-sm transition">
             Responsible Gaming Settings
           </a>
+          <a href="/profile/security" className="block px-4 py-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-violet-500/20 text-slate-400 text-sm transition">
+            🔐 Account Security (2FA & Password)
+          </a>
           <a href="/security" className="block px-4 py-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 text-slate-400 text-sm transition">
             Security & Privacy
           </a>

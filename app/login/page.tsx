@@ -22,10 +22,17 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok || data.code) {
-        setError(data.message || "Invalid email or password");
+        setError(data.message || data.error || "Invalid email or password");
         setLoading(false);
         return;
       }
+
+      // 2FA required — redirect to challenge page
+      if (data.requires2FA) {
+        window.location.href = `/login/2fa?challenge=${data.challengeToken}`;
+        return;
+      }
+
       // Small delay for cookie to set
       await new Promise(r => setTimeout(r, 300));
       // Check if admin

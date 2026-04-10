@@ -92,6 +92,9 @@ export const users = pgTable(
     passwordHash: text("password_hash").notNull(),
     name: text("name").notNull(),
     image: text("image"),
+    totpSecret: text("totp_secret"), // AES-256-GCM encrypted TOTP secret
+    totpEnabled: boolean("totp_enabled").default(false).notNull(),
+    recoveryCodes: text("recovery_codes"), // JSON array of bcrypt-hashed codes
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [uniqueIndex("users_email_idx").on(t.email)]
@@ -109,6 +112,20 @@ export const sessions = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("sessions_token_idx").on(t.token)]
+);
+
+// ── Two-Factor Challenges (temporary login state) ───────────────────────────
+
+export const twoFactorChallenges = pgTable(
+  "two_factor_challenges",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    challengeToken: text("challenge_token").notNull().unique(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("tfa_challenge_token_idx").on(t.challengeToken)]
 );
 
 // ── User Profiles ────────────────────────────────────────────────────────────

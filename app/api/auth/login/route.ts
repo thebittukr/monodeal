@@ -15,7 +15,25 @@ export async function POST(req: Request) {
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
 
-    // Create session
+    // ── 2FA Check ──────────────────────────────────────────────────────
+    if (user.totpEnabled) {
+      // Don't create a session — create a temporary challenge instead
+      const challengeToken = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+      await db.insert(schema.twoFactorChallenges).values({
+        userId: user.id,
+        challengeToken,
+        expiresAt,
+      });
+
+      return NextResponse.json({
+        requires2FA: true,
+        challengeToken,
+      });
+    }
+
+    // ── No 2FA — create session as before ──────────────────────────────
     const token = randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 

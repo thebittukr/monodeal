@@ -57,8 +57,12 @@ export async function GET(req: Request) {
     const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").filter(Boolean);
     const isAdmin = adminEmails.includes(user.email);
 
+    // Fetch 2FA status
+    const [dbUser] = await db.select({ totpEnabled: schema.users.totpEnabled })
+      .from(schema.users).where(eq(schema.users.id, user.id)).limit(1);
+
     return NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name, image: user.image },
+      user: { id: user.id, email: user.email, name: user.name, image: user.image, totpEnabled: dbUser?.totpEnabled ?? false },
       profile: profile || null,
       rating: rating || null,
       credits: credits ? { balance: credits.balance, locked: credits.lockedBalance } : null,
