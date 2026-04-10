@@ -1,18 +1,22 @@
-import { auth } from "@/lib/auth/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default auth.middleware({
-  loginUrl: "/login",
-});
+// Simple middleware — check session cookie for protected routes
+export default function middleware(request: NextRequest) {
+  const sessionCookie = request.cookies.get("session");
+  const path = request.nextUrl.pathname;
+
+  // Protected routes
+  const protectedPaths = ["/credits", "/wallet", "/profile", "/settings"];
+  const isProtected = protectedPaths.some((p) => path.startsWith(p));
+
+  if (isProtected && !sessionCookie) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  return NextResponse.next();
+}
 
 export const config = {
-  matcher: [
-    // Protect these routes — require auth
-    "/credits/:path*",
-    "/wallet/:path*",
-    "/profile/:path*",
-    "/settings/:path*",
-    // Partners + Leaderboard are PUBLIC (shop/browse view)
-    // Game API routes that need auth (credits mode)
-    // Note: /room and /api/createRoom etc stay public for free play
-  ],
+  matcher: ["/credits/:path*", "/wallet/:path*", "/profile/:path*", "/settings/:path*"],
 };

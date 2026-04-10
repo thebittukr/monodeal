@@ -1,12 +1,13 @@
-import { createNeonAuth } from "@neondatabase/auth/next/server";
+/**
+ * Custom auth — no Neon Auth dependency.
+ * Simple cookie-based sessions with bcrypt password hashing.
+ */
 
-// Gracefully handle missing env vars during build
-const baseUrl = process.env.NEON_AUTH_BASE_URL || "https://placeholder.neonauth.com";
-const cookieSecret = process.env.NEON_AUTH_COOKIE_SECRET || "build-placeholder-secret-must-be-32-chars!!";
+// Placeholder — auth is now handled via custom API routes
+// No middleware needed since we use cookie-based sessions
 
-export const auth = createNeonAuth({
-  baseUrl,
-  cookies: {
-    secret: cookieSecret,
-  },
-});
+export const auth = {
+  middleware: () => (req: any) => req,
+  handler: () => ({ GET: async () => new Response("OK"), POST: async () => new Response("OK") }),
+  getSession: async () => null,
+};

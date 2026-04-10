@@ -82,7 +82,36 @@ export const avatarCategory = pgEnum("avatar_category", [
   "style",
 ]);
 
-// ── User Profiles (extends Neon Auth users) ──────────────────────────────────
+// ── Users (custom auth — replaces Neon Auth) ─────────────────────────────────
+
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    email: text("email").notNull().unique(),
+    passwordHash: text("password_hash").notNull(),
+    name: text("name").notNull(),
+    image: text("image"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("users_email_idx").on(t.email)]
+);
+
+// ── Sessions ─────────────────────────────────────────────────────────────────
+
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    token: text("token").notNull().unique(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("sessions_token_idx").on(t.token)]
+);
+
+// ── User Profiles ────────────────────────────────────────────────────────────
 
 export const userProfiles = pgTable(
   "user_profiles",

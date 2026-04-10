@@ -15,7 +15,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       // Use direct API call for reliable cookie handling
-      const res = await fetch("/api/auth/sign-in/email", {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

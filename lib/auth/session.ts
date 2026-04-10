@@ -1,18 +1,17 @@
 /**
- * Session helpers for API routes and server components.
- * Gets the current authenticated user from the Neon Auth session.
+ * Custom session management — replaces Neon Auth.
+ * Uses HTTP-only cookie with session token stored in DB.
  */
 
-import { auth } from "./server";
 import { db, schema } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { eq, and, gt } from "drizzle-orm";
+import { cookies } from "next/headers";
 
 export interface SessionUser {
-  id: string; // Neon Auth user ID
+  id: string;
   email: string;
   name?: string;
   image?: string;
-  // Extended profile from our DB
   profile?: {
     username: string;
     level: number;
@@ -23,32 +22,49 @@ export interface SessionUser {
 }
 
 /**
- * Get current session user. Returns null if not authenticated.
+ * Get current session user from cookie. Returns null if not authenticated.
  */
 export async function getSessionUser(): Promise<SessionUser | null> {
   try {
-    const result = await auth.getSession();
-    // Neon Auth returns a union type — check for data property
-    const session = result && "data" in result ? (result as { data: { user: { id: string; email?: string; name: string; image?: string } } }).data : null;
-    if (!session?.user) return null;
+    const cookieStore = await cookies();
+    const token = cookieStore.get("session")?.value;
+    if (!token) return null;
 
-    const user: SessionUser = {
-      id: session.user.id,
-      email: session.user.email || "",
-      name: session.user.name || undefined,
-      image: session.user.image || undefined,
+    // Find valid session
+    const [session] = await db
+      .select()
+      .from(schema.sessions)
+      .where(and(eq(schema.sessions.token, token), gt(schema.sessions.expiresAt, new Date())))
+      .limit(1);
+
+    if (!session) return null;
+
+    // Get user
+    const [user] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, session.userId))
+      .limit(1);
+
+    if (!user) return null;
+
+    const sessionUser: SessionUser = {
+      id: user.id,
+      email: user.email,
+      name: user.name || undefined,
+      image: user.image || undefined,
     };
 
-    // Load extended profile
+    // Load profile
     try {
       const profiles = await db
         .select()
         .from(schema.userProfiles)
-        .where(eq(schema.userProfiles.userId, session.user.id))
+        .where(eq(schema.userProfiles.userId, user.id))
         .limit(1);
 
       if (profiles.length > 0) {
-        user.profile = {
+        sessionUser.profile = {
           username: profiles[0].username,
           level: profiles[0].level,
           xp: profiles[0].xp,
@@ -56,86 +72,48 @@ export async function getSessionUser(): Promise<SessionUser | null> {
           equippedGirlfriendId: profiles[0].equippedGirlfriendId,
         };
       }
-    } catch {
-      // Profile not created yet — that's fine
-    }
+    } catch {}
 
-    return user;
+    return sessionUser;
   } catch {
     return null;
   }
 }
 
-/**
- * Require authentication — throws if not logged in.
- * Use in API routes that need auth.
- */
 export async function requireAuth(): Promise<SessionUser> {
   const user = await getSessionUser();
-  if (!user) {
-    throw new Error("Authentication required");
-  }
+  if (!user) throw new Error("Authentication required");
   return user;
 }
 
 /**
  * Create user profile on first login.
- * Called after successful auth to ensure profile exists.
  */
 export async function ensureUserProfile(
   userId: string,
   email: string,
   name?: string
 ): Promise<void> {
-  // Check if profile exists
-  const existing = await db
-    .select()
-    .from(schema.userProfiles)
-    .where(eq(schema.userProfiles.userId, userId))
-    .limit(1);
+  const existing = await db.select().from(schema.userProfiles)
+    .where(eq(schema.userProfiles.userId, userId)).limit(1);
+  if (existing.length > 0) return;
 
-  if (existing.length > 0) return; // already exists
-
-  // Generate username from email or name
   const baseUsername = (name || email.split("@")[0])
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "")
-    .slice(0, 15);
+    .toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 15);
   const username = `${baseUsername}${Math.floor(Math.random() * 999)}`;
 
-  // Create profile + credits + rating (ignore if already exists)
+  try { await db.insert(schema.userProfiles).values({ userId, username }).onConflictDoNothing(); } catch {}
+  try { await db.insert(schema.credits).values({ userId }).onConflictDoNothing(); } catch {}
+  try { await db.insert(schema.userRatings).values({ userId }).onConflictDoNothing(); } catch {}
+  try { await db.insert(schema.playerRiskProfiles).values({ userId }).onConflictDoNothing(); } catch {}
+
+  // Grant starter dates
   try {
-    await db.insert(schema.userProfiles).values({ userId, username }).onConflictDoNothing();
-  } catch { /* ignore */ }
-
-  try {
-    await db.insert(schema.credits).values({ userId }).onConflictDoNothing();
-  } catch { /* ignore */ }
-
-  try {
-    await db.insert(schema.userRatings).values({ userId }).onConflictDoNothing();
-  } catch { /* ignore */ }
-
-  // Give starter girlfriends (the 4 free ones)
-  const starters = await db
-    .select()
-    .from(schema.girlfriends)
-    .where(eq(schema.girlfriends.isStarter, true));
-
-  if (starters.length > 0) {
-    try {
+    const starters = await db.select().from(schema.girlfriends).where(eq(schema.girlfriends.isStarter, true));
+    if (starters.length > 0) {
       await db.insert(schema.userGirlfriends).values(
-        starters.map((gf, i) => ({
-          userId,
-          girlfriendId: gf.id,
-          equipped: i === 0,
-        }))
+        starters.map((gf, i) => ({ userId, girlfriendId: gf.id, equipped: i === 0 }))
       ).onConflictDoNothing();
-    } catch { /* ignore duplicates */ }
-  }
-
-  // Create risk profile for fraud tracking
-  try {
-    await db.insert(schema.playerRiskProfiles).values({ userId }).onConflictDoNothing();
-  } catch { /* ignore */ }
+    }
+  } catch {}
 }
