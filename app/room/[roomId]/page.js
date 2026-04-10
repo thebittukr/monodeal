@@ -7,10 +7,10 @@ import MusicPlayer from "@/components/MusicPlayer";
 import { getMusicPlayer } from "@/lib/pixabayMusic";
 import { setNarratorEnabled } from "@/lib/narrator";
 import { useAuth } from "@/lib/useAuth";
+import { useGameSocket } from "@/lib/wsClient";
 
-const POLL_FAST           = 800;   // During active gameplay
-const POLL_NORMAL         = 1500;  // Default
-const POLL_SLOW           = 2500;  // Waiting room / game ended
+const POLL_FALLBACK       = 5000;  // Slow fallback when WS is active
+const POLL_NO_WS          = 1200;  // Faster polling when WS is down
 const MAX_PLAYERS         = 4;
 const COLD_FAIL_MAX       = 15;    // redirect only if never connected after ~30 s
 const RECONNECT_THRESHOLD = 3;     // show "reconnecting" only after 3 consecutive fails
@@ -87,24 +87,33 @@ export default function RoomPage() {
     p.loadCity(city);
   }, [city]); // eslint-disable-line
 
-  // ── Polling ───────────────────────────────────────────────────────────────
+  // ── WebSocket: primary real-time channel ────────────────────────────────
+  const wsActiveRef = useRef(false);
+  const { connected: wsConnected } = useGameSocket(roomId, myId, useCallback((wsState) => {
+    if (!wsState) return;
+    everConnectedRef.current = true;
+    failsRef.current = 0;
+    setReconnecting(false);
+    stateRef.current = wsState;
+    setState(wsState);
+  }, []));
+
+  useEffect(() => { wsActiveRef.current = wsConnected; }, [wsConnected]);
+
+  // ── Polling: fallback (slow when WS active, faster when WS down) ─────
   useEffect(() => {
     if (!myId) return;
-    let interval;
+    let timeout;
 
     const lastJsonRef = { current: "" };
     const poll = async () => {
       try {
-        const res = await fetch(`/api/game?roomId=${roomId}&playerId=${myId}`, {
-          cache: "no-store",
-        });
-
+        const res = await fetch(`/api/game?roomId=${roomId}&playerId=${myId}`, { cache: "no-store" });
         if (res.ok) {
           const text = await res.text();
           everConnectedRef.current = true;
           failsRef.current = 0;
           setReconnecting(false);
-          // Skip re-render if state hasn't changed
           if (text !== lastJsonRef.current) {
             lastJsonRef.current = text;
             const parsed = JSON.parse(text);
@@ -113,30 +122,25 @@ export default function RoomPage() {
           }
         } else {
           failsRef.current += 1;
-          // Only show reconnecting UI after several consecutive failures (avoids flicker)
           if (failsRef.current >= RECONNECT_THRESHOLD) setReconnecting(true);
-          if (!everConnectedRef.current && failsRef.current >= COLD_FAIL_MAX) {
-            router.push("/");
-          }
+          if (!everConnectedRef.current && failsRef.current >= COLD_FAIL_MAX) router.push("/");
         }
       } catch {
         failsRef.current += 1;
         if (failsRef.current >= RECONNECT_THRESHOLD) setReconnecting(true);
-        if (!everConnectedRef.current && failsRef.current >= COLD_FAIL_MAX) {
-          router.push("/");
-        }
+        if (!everConnectedRef.current && failsRef.current >= COLD_FAIL_MAX) router.push("/");
       }
     };
 
+    // Initial fetch (WS may not be connected yet)
     poll();
-    // Adaptive polling — faster during active play
+
     const tick = () => {
-      const phase = stateRef.current?.phase;
-      const speed = phase === "playing" ? POLL_FAST : phase === "waiting" ? POLL_SLOW : POLL_NORMAL;
-      interval = setTimeout(() => { poll().then(tick); }, speed);
+      const speed = wsActiveRef.current ? POLL_FALLBACK : POLL_NO_WS;
+      timeout = setTimeout(() => { poll().then(tick); }, speed);
     };
     tick();
-    return () => clearTimeout(interval);
+    return () => clearTimeout(timeout);
   }, [myId, roomId, router]);
 
   // ── SFX ───────────────────────────────────────────────────────────────────
@@ -190,11 +194,13 @@ export default function RoomPage() {
         const data = await res.json();
 
         if (res.ok) {
-          // Fire-and-forget state refresh — don't block the UI
-          fetch(`/api/game?roomId=${roomId}&playerId=${myIdRef.current}`, { cache: "no-store" })
-            .then(r => r.ok ? r.text() : null)
-            .then(text => { if (text) setState(JSON.parse(text)); })
-            .catch(() => {});
+          // WS will deliver the state update. Only re-poll if WS is down.
+          if (!wsActiveRef.current) {
+            fetch(`/api/game?roomId=${roomId}&playerId=${myIdRef.current}`, { cache: "no-store" })
+              .then(r => r.ok ? r.text() : null)
+              .then(text => { if (text) { stateRef.current = JSON.parse(text); setState(stateRef.current); }})
+              .catch(() => {});
+          }
           return;
         }
 
