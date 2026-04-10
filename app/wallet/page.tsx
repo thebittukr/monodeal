@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Nav from "@/components/Nav";
+import QRCode from "qrcode";
 
 export default function WalletPage() {
   const [wallet, setWallet] = useState<any>(null);
@@ -16,6 +17,9 @@ export default function WalletPage() {
   const [has2FA, setHas2FA] = useState(false);
   const [needs2FA, setNeeds2FA] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+
+  // QR code
+  const [qrDataUrl, setQrDataUrl] = useState("");
 
   // Deposit polling
   const [depositPolling, setDepositPolling] = useState(false);
@@ -34,6 +38,16 @@ export default function WalletPage() {
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
+
+  // Generate QR code when wallet address is available
+  useEffect(() => {
+    if (wallet?.custodial?.address) {
+      QRCode.toDataURL(wallet.custodial.address, {
+        width: 200, margin: 2,
+        color: { dark: "#000000", light: "#ffffff" },
+      }).then(setQrDataUrl).catch(() => {});
+    }
+  }, [wallet?.custodial?.address]);
 
   // Clean up polling on unmount
   useEffect(() => {
@@ -177,6 +191,16 @@ export default function WalletPage() {
 
               {wallet?.custodial ? (
                 <>
+                  {/* QR Code */}
+                  {qrDataUrl && (
+                    <div className="flex justify-center mb-4">
+                      <div className="bg-white rounded-2xl p-3 shadow-lg">
+                        <img src={qrDataUrl} alt="Deposit QR Code" className="w-44 h-44" />
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-center text-slate-500 text-[10px] mb-3">Scan with any Polygon-compatible wallet</p>
+
                   <div className="bg-black/30 rounded-lg p-4 border border-white/5 mb-3">
                     <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest mb-1">Deposit Address (Polygon)</p>
                     <p className="font-mono text-sm text-violet-300 break-all select-all">{wallet.custodial.address}</p>
@@ -210,9 +234,20 @@ export default function WalletPage() {
                 <p className="text-slate-600 text-sm">Wallet not created yet. Sign in first.</p>
               )}
 
-              <p className="text-red-400/60 text-[10px] mt-3">
-                Only send USDT or USDC on Polygon. Other tokens or chains = permanent loss.
-              </p>
+              {/* Network Disclaimers */}
+              <div className="mt-4 bg-red-950/30 border border-red-500/20 rounded-xl p-3.5 space-y-1.5">
+                <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+                  <span>⚠️</span> Important — Read Before Sending
+                </p>
+                <ul className="text-red-400/80 text-[10px] leading-relaxed space-y-1 list-disc list-inside">
+                  <li>Only send <strong>USDT</strong> or <strong>USDC</strong> tokens</li>
+                  <li>Only on the <strong>{isTestnet ? "Polygon Amoy Testnet" : "Polygon PoS (Mainnet)"}</strong> network</li>
+                  <li>Do NOT send ETH, MATIC, BTC, or any other token — they will be <strong>permanently lost</strong></li>
+                  <li>Do NOT send from Ethereum, BSC, Arbitrum, or any other chain — funds will be <strong>unrecoverable</strong></li>
+                  <li>Minimum deposit: 1 USDT (100 credits). Smaller amounts may not be detected</li>
+                  {isTestnet && <li className="text-amber-400">This is <strong>testnet</strong> — tokens have no real value</li>}
+                </ul>
+              </div>
             </div>
 
             {/* External Wallet Connection */}
