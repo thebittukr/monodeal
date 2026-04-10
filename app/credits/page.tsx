@@ -160,20 +160,25 @@ export default function CreditsPage() {
           <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
             <h3 className="font-semibold mb-4">Withdraw</h3>
             <p className="text-slate-400 text-sm mb-4">
-              Minimum withdrawal: 500 credits (5 USDT). Withdrawals are processed to your connected wallet.
+              Minimum: 500 credits (5 USDT). Processed to your connected external wallet on Polygon.
             </p>
             {wallet?.external ? (
-              <p className="text-sm text-slate-400">
-                External wallet: <span className="font-mono text-purple-300">{wallet.external.address.slice(0, 8)}...{wallet.external.address.slice(-6)}</span>
-              </p>
+              <div>
+                <p className="text-sm text-slate-400 mb-3">
+                  Withdraw to: <span className="font-mono text-purple-300">{wallet.external.address.slice(0, 8)}...{wallet.external.address.slice(-6)}</span>
+                </p>
+                <a href="/wallet" className="inline-block px-5 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold transition">
+                  Go to Wallet to Withdraw &rarr;
+                </a>
+              </div>
             ) : (
-              <p className="text-slate-500 text-sm">
-                Connect MetaMask to enable withdrawals.
-              </p>
+              <div>
+                <p className="text-slate-500 text-sm mb-3">Connect an external wallet to enable withdrawals.</p>
+                <a href="/wallet" className="inline-block px-5 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold transition">
+                  Set Up Wallet &rarr;
+                </a>
+              </div>
             )}
-            <p className="text-slate-600 text-xs mt-4">
-              Withdrawal system is being finalized. Coming soon.
-            </p>
           </div>
         )}
 
