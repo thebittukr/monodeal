@@ -8,7 +8,9 @@ import { getMusicPlayer } from "@/lib/pixabayMusic";
 import { setNarratorEnabled } from "@/lib/narrator";
 import { useAuth } from "@/lib/useAuth";
 
-const POLL_INTERVAL       = 1500;  // 1.5s — snappy updates, good balance with Redis
+const POLL_FAST           = 800;   // During active gameplay
+const POLL_NORMAL         = 1500;  // Default
+const POLL_SLOW           = 2500;  // Waiting room / game ended
 const MAX_PLAYERS         = 4;
 const COLD_FAIL_MAX       = 15;    // redirect only if never connected after ~30 s
 const RECONNECT_THRESHOLD = 3;     // show "reconnecting" only after 3 consecutive fails
@@ -27,6 +29,7 @@ export default function RoomPage() {
 
   const [myId,            setMyId]            = useState(null);
   const [state,           setState]           = useState(null);
+  const stateRef = useRef(null);
   const [moveError,       setMoveError]       = useState("");
   const [copied,          setCopied]          = useState(false);
   const [soundOn,         setSoundOn]         = useState(false);
@@ -104,7 +107,9 @@ export default function RoomPage() {
           // Skip re-render if state hasn't changed
           if (text !== lastJsonRef.current) {
             lastJsonRef.current = text;
-            setState(JSON.parse(text));
+            const parsed = JSON.parse(text);
+            stateRef.current = parsed;
+            setState(parsed);
           }
         } else {
           failsRef.current += 1;
@@ -124,8 +129,14 @@ export default function RoomPage() {
     };
 
     poll();
-    interval = setInterval(poll, POLL_INTERVAL);
-    return () => clearInterval(interval);
+    // Adaptive polling — faster during active play
+    const tick = () => {
+      const phase = stateRef.current?.phase;
+      const speed = phase === "playing" ? POLL_FAST : phase === "waiting" ? POLL_SLOW : POLL_NORMAL;
+      interval = setTimeout(() => { poll().then(tick); }, speed);
+    };
+    tick();
+    return () => clearTimeout(interval);
   }, [myId, roomId, router]);
 
   // ── SFX ───────────────────────────────────────────────────────────────────

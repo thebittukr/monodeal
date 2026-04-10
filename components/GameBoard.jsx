@@ -194,7 +194,7 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
 
       {mustDiscard && state.pendingAction && (
         <ActionModal mode="discard" pendingAction={state.pendingAction} myHand={me?.hand ?? []}
-          onConfirm={({ cardIds }) => onMove({ type: "discard", cardIds })} onCancel={() => {}} />
+          onConfirm={({ cardIds }) => safeMove({ type: "discard", cardIds })} onCancel={() => {}} />
       )}
 
       {mustPayAssets && state.pendingAction && (
