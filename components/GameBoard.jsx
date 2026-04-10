@@ -34,6 +34,7 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
   const [flipWildCard,   setFlipWildCard]   = useState(null);
   const [showFullLog,    setShowFullLog]    = useState(false);
   const [cheering,       setCheering]       = useState(false);
+  const [movePending,    setMovePending]    = useState(false);
   const prevTurnRef = useRef(null);
 
   // ── Effects (narration) ────────────────────────────────────────────────────
@@ -121,14 +122,22 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
     setModalMode(NEEDS_FURTHER_INPUT[selectedCard?.action] ?? "confirm-targeted");
   }, [selectedCard]);
 
+  // Wrapped onMove with double-tap prevention
+  const safeMove = useCallback(async (move) => {
+    if (movePending) return;
+    setMovePending(true);
+    try { await onMove(move); }
+    finally { setMovePending(false); }
+  }, [onMove, movePending]);
+
   const handleModalConfirm = useCallback(async (params) => {
-    if (!selectedCard) return;
+    if (!selectedCard || movePending) return;
     if (selectedCard.action === "justsayno") narrateJustSayNo();
     else narrateCardPlay(selectedCard);
     const move = { cardId: selectedCard.id, type: "play", ...(targetPlayer && !params?.asBank ? { targetPlayerIdx: targetPlayer.playerIdx } : {}), ...params };
     setSelectedCard(null); setModalMode(null); setTargetPlayer(null);
-    await onMove(move);
-  }, [selectedCard, targetPlayer, onMove]);
+    await safeMove(move);
+  }, [selectedCard, targetPlayer, safeMove, movePending]);
 
   const handleModalCancel = useCallback(() => {
     setSelectedCard(null); setModalMode(null); setTargetPlayer(null); setActionError(null); setFlipWildCard(null);
@@ -140,24 +149,26 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
   }, [isMyTurn, state]);
 
   const handleFlipConfirm = useCallback(async ({ toColor }) => {
+    if (movePending) return;
     const { card, fromColor } = flipWildCard;
     setFlipWildCard(null);
-    await onMove({ type: "flipWild", cardId: card.id, fromColor, toColor });
-  }, [flipWildCard, onMove]);
+    await safeMove({ type: "flipWild", cardId: card.id, fromColor, toColor });
+  }, [flipWildCard, safeMove, movePending]);
 
   const handleRespond = useCallback(async (responseOrObj) => {
+    if (movePending) return;
     if (typeof responseOrObj === "object" && responseOrObj !== null && "response" in responseOrObj) {
-      await onMove({ type: "respond", ...responseOrObj });
+      await safeMove({ type: "respond", ...responseOrObj });
     } else {
-      await onMove({ type: "respond", response: responseOrObj });
+      await safeMove({ type: "respond", response: responseOrObj });
     }
-  }, [onMove]);
+  }, [safeMove, movePending]);
 
   const handleEndTurn = useCallback(async () => {
-    if (!isMyTurn || state.pendingAction) return;
+    if (!isMyTurn || state.pendingAction || movePending) return;
     setSelectedCard(null); setModalMode(null);
-    await onMove({ type: "endTurn" });
-  }, [isMyTurn, state, onMove]);
+    await safeMove({ type: "endTurn" });
+  }, [isMyTurn, state, safeMove, movePending]);
 
   // ══════════════════════════════════════════════════════════════════════════════
   // RENDER
@@ -441,9 +452,10 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
                       transition: "transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s ease",
                       zIndex: isSelected ? total + 10 : i + 1,
                       cursor: canPlay ? "pointer" : "default",
+                      pointerEvents: (canPlay || isSelected) ? "auto" : "none",
                       filter: (!canPlay && !isSelected) ? "brightness(0.5) saturate(0.5)" : "none",
                     }}
-                    onClick={() => handleCardClick(card)}
+                    onClick={() => canPlay && handleCardClick(card)}
                   >
                     <Card card={card} selected={isSelected} dimmed={false} />
                   </div>

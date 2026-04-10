@@ -17,6 +17,11 @@
 /* ─── Base ───────────────────────────────────────────────────────────────── */
 * {
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; /* Removes 300ms tap delay on mobile */
+}
+
+button, a, [role="button"], input, select, textarea {
+  touch-action: manipulation;
 }
 
 html, body {

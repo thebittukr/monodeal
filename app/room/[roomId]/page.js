@@ -173,7 +173,14 @@ export default function RoomPage() {
         });
         const data = await res.json();
 
-        if (res.ok) return; // success — done
+        if (res.ok) {
+          // Immediately poll for updated state (don't wait 2s)
+          try {
+            const stateRes = await fetch(`/api/game?roomId=${roomId}&playerId=${myIdRef.current}`, { cache: "no-store" });
+            if (stateRes.ok) setState(await stateRes.json());
+          } catch {}
+          return;
+        }
 
         const isTransient = res.status >= 500 || data.error === "Room not found";
         if (isTransient && attempt < MOVE_RETRIES) {
