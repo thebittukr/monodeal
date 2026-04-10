@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 
-/**
- * Redirect to Google OAuth consent screen
- */
-export async function GET() {
+export async function GET(req: Request) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) {
     return NextResponse.json({ error: "Google OAuth not configured" }, { status: 500 });
   }
 
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/google/callback`;
+  // Detect base URL from request (works on both localhost and Railway)
+  const url = new URL(req.url);
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${url.protocol}//${url.host}`;
+  const redirectUri = `${baseUrl}/api/auth/google/callback`;
 
   const params = new URLSearchParams({
     client_id: clientId,
