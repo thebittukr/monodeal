@@ -61,7 +61,7 @@ export default function IntroOverlay({ onDone }) {
 
       {/* Character image */}
       <div style={{ position: "relative", width: 250, flexShrink: 0 }}>
-        <img src="https://pub-3b44ace66a3b4c17af6fa229197f3026.r2.dev/dates/strawberry.gif" alt="" style={{ width: "100%" }} />
+        <img src="https://r2.propertyrush.net/dates/strawberry.gif" alt="" style={{ width: "100%" }} />
 
         {/* Speech bubble */}
         <div style={{

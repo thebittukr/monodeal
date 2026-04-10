@@ -34,7 +34,7 @@ async function main() {
   // 3. Starter dates
   console.log("\n3. Seeding starter dates...");
   const dates = [
-    { name: "Strawberry", rarity: "common" as const, style: "anime" as const, gender: "female" as const, isStarter: true, priceCredits: 0, personality: "The Empress — glamorous, playful, always sipping", description: "The original PropertyRush icon", thumbnailUrl: "https://pub-3b44ace66a3b4c17af6fa229197f3026.r2.dev/dates/strawberry.gif" },
+    { name: "Strawberry", rarity: "common" as const, style: "anime" as const, gender: "female" as const, isStarter: true, priceCredits: 0, personality: "The Empress — glamorous, playful, always sipping", description: "The original PropertyRush icon", thumbnailUrl: "https://r2.propertyrush.net/dates/strawberry.gif" },
   ];
   for (const d of dates) {
     try {

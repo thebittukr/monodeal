@@ -26,7 +26,7 @@ const LOSS_LINES = [
   "Shake it off!", "Pain is temporary, victory is forever",
 ];
 
-const DEFAULT_DATE_IMG = "https://pub-3b44ace66a3b4c17af6fa229197f3026.r2.dev/dates/strawberry.gif";
+const DEFAULT_DATE_IMG = "https://r2.propertyrush.net/dates/strawberry.gif";
 
 export default function CasinoBackground({
   city = "lasvegas",

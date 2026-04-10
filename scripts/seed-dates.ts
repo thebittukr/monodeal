@@ -11,7 +11,7 @@ import * as schema from "../lib/db/schema";
 const sql = neon(process.env.DATABASE_URL!);
 const db = drizzle(sql, { schema });
 
-const R2 = "https://pub-3b44ace66a3b4c17af6fa229197f3026.r2.dev/dates";
+const R2 = "https://r2.propertyrush.net/dates";
 
 interface DateEntry {
   name: string;
