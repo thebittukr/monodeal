@@ -34,7 +34,7 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
   const [flipWildCard,   setFlipWildCard]   = useState(null);
   const [showFullLog,    setShowFullLog]    = useState(false);
   const [cheering,       setCheering]       = useState(false);
-  const [movePending,    setMovePending]    = useState(false);
+  const movePendingRef = useRef(false);
   const prevTurnRef = useRef(null);
 
   // ── Effects (narration) ────────────────────────────────────────────────────
@@ -122,22 +122,21 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
     setModalMode(NEEDS_FURTHER_INPUT[selectedCard?.action] ?? "confirm-targeted");
   }, [selectedCard]);
 
-  // Wrapped onMove with double-tap prevention
-  const safeMove = useCallback(async (move) => {
-    if (movePending) return;
-    setMovePending(true);
-    try { await onMove(move); }
-    finally { setMovePending(false); }
-  }, [onMove, movePending]);
+  // Fire-and-forget move — no await blocking the UI
+  const safeMove = useCallback((move) => {
+    if (movePendingRef.current) return;
+    movePendingRef.current = true;
+    onMove(move).finally(() => { movePendingRef.current = false; });
+  }, [onMove]);
 
-  const handleModalConfirm = useCallback(async (params) => {
-    if (!selectedCard || movePending) return;
+  const handleModalConfirm = useCallback((params) => {
+    if (!selectedCard || movePendingRef.current) return;
     if (selectedCard.action === "justsayno") narrateJustSayNo();
     else narrateCardPlay(selectedCard);
     const move = { cardId: selectedCard.id, type: "play", ...(targetPlayer && !params?.asBank ? { targetPlayerIdx: targetPlayer.playerIdx } : {}), ...params };
     setSelectedCard(null); setModalMode(null); setTargetPlayer(null);
-    await safeMove(move);
-  }, [selectedCard, targetPlayer, safeMove, movePending]);
+    safeMove(move);
+  }, [selectedCard, targetPlayer, safeMove]);
 
   const handleModalCancel = useCallback(() => {
     setSelectedCard(null); setModalMode(null); setTargetPlayer(null); setActionError(null); setFlipWildCard(null);
@@ -148,27 +147,27 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
     setFlipWildCard({ card, fromColor });
   }, [isMyTurn, state]);
 
-  const handleFlipConfirm = useCallback(async ({ toColor }) => {
-    if (movePending) return;
+  const handleFlipConfirm = useCallback(({ toColor }) => {
+    if (movePendingRef.current) return;
     const { card, fromColor } = flipWildCard;
     setFlipWildCard(null);
-    await safeMove({ type: "flipWild", cardId: card.id, fromColor, toColor });
-  }, [flipWildCard, safeMove, movePending]);
+    safeMove({ type: "flipWild", cardId: card.id, fromColor, toColor });
+  }, [flipWildCard, safeMove]);
 
-  const handleRespond = useCallback(async (responseOrObj) => {
-    if (movePending) return;
+  const handleRespond = useCallback((responseOrObj) => {
+    if (movePendingRef.current) return;
     if (typeof responseOrObj === "object" && responseOrObj !== null && "response" in responseOrObj) {
-      await safeMove({ type: "respond", ...responseOrObj });
+      safeMove({ type: "respond", ...responseOrObj });
     } else {
-      await safeMove({ type: "respond", response: responseOrObj });
+      safeMove({ type: "respond", response: responseOrObj });
     }
-  }, [safeMove, movePending]);
+  }, [safeMove]);
 
-  const handleEndTurn = useCallback(async () => {
-    if (!isMyTurn || state.pendingAction || movePending) return;
+  const handleEndTurn = useCallback(() => {
+    if (!isMyTurn || state.pendingAction || movePendingRef.current) return;
     setSelectedCard(null); setModalMode(null);
-    await safeMove({ type: "endTurn" });
-  }, [isMyTurn, state, safeMove, movePending]);
+    safeMove({ type: "endTurn" });
+  }, [isMyTurn, state, safeMove]);
 
   // ══════════════════════════════════════════════════════════════════════════════
   // RENDER

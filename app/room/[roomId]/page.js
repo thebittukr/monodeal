@@ -179,11 +179,11 @@ export default function RoomPage() {
         const data = await res.json();
 
         if (res.ok) {
-          // Immediately poll for updated state (don't wait 2s)
-          try {
-            const stateRes = await fetch(`/api/game?roomId=${roomId}&playerId=${myIdRef.current}`, { cache: "no-store" });
-            if (stateRes.ok) setState(await stateRes.json());
-          } catch {}
+          // Fire-and-forget state refresh — don't block the UI
+          fetch(`/api/game?roomId=${roomId}&playerId=${myIdRef.current}`, { cache: "no-store" })
+            .then(r => r.ok ? r.text() : null)
+            .then(text => { if (text) setState(JSON.parse(text)); })
+            .catch(() => {});
           return;
         }
 
