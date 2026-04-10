@@ -34,8 +34,18 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
   const [flipWildCard,   setFlipWildCard]   = useState(null);
   const [showFullLog,    setShowFullLog]    = useState(false);
   const [cheering,       setCheering]       = useState(false);
+  const [avatarMap,      setAvatarMap]      = useState({});  // id → imageUrl
   const movePendingRef = useRef(false);
   const prevTurnRef = useRef(null);
+
+  // Fetch avatar images once — map id to URL for rendering
+  useEffect(() => {
+    fetch("/api/avatars").then(r => r.json()).then(d => {
+      const map = {};
+      for (const a of (d.avatars || [])) map[a.id] = a.imageUrl;
+      setAvatarMap(map);
+    }).catch(() => {});
+  }, []);
 
   // ── Effects (narration) ────────────────────────────────────────────────────
   useEffect(() => {
@@ -89,6 +99,19 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
   const isMyTurn  = state.turnIndex === myIdx;
   const playsLeft = state.maxPlays - state.playsThisTurn;
   const myCompletedSets = countCompletedSets(me?.assets ?? {});
+
+  // Resolve player avatar → image URL
+  const getAvatarUrl = (player) => {
+    if (!player) return "/avatar-default.jpg";
+    // Try DB avatar map first, then fall back
+    if (player.avatar && avatarMap[player.avatar]) return avatarMap[player.avatar];
+    // For old integer-based avatars, try by index
+    const keys = Object.keys(avatarMap);
+    if (typeof player.avatar === "number" && player.avatar > 0 && player.avatar <= keys.length) {
+      return avatarMap[keys[player.avatar - 1]] || "/avatar-default.jpg";
+    }
+    return "/avatar-default.jpg";
+  };
 
   const pendingForMe      = state.pendingAction && state.pendingAction.toIdx === myIdx;
   const pendingMultiForMe = state.pendingAction && Array.isArray(state.pendingAction.toIdxList) && state.pendingAction.toIdxList.includes(myIdx) && !state.pendingAction.respondedList?.includes(myIdx);
@@ -310,7 +333,7 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
                     <div className="flex items-center gap-2.5 mb-2">
                       {/* Avatar with timer ring when it's their turn */}
                       <div className="relative">
-                        <img src="/avatar-default.jpg" alt="" className="w-8 h-8 rounded-full object-cover" />
+                        <img src={getAvatarUrl(opp)} alt="" className="w-8 h-8 rounded-full object-cover" />
                         {isOppTurn && (
                           <div className="absolute -inset-1 rounded-full border-2 border-emerald-400/50 animate-pulse" />
                         )}
@@ -350,7 +373,7 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
             }`}>
               <div className="flex items-center gap-2.5 mb-2">
                 <div className="relative">
-                  <img src="/avatar-default.jpg" alt="" className="w-8 h-8 rounded-full object-cover" />
+                  <img src={getAvatarUrl(me)} alt="" className="w-8 h-8 rounded-full object-cover" />
                   {isMyTurn && <div className="absolute -inset-1 rounded-full border-2 border-violet-400/40 animate-pulse" />}
                 </div>
                 <div>
