@@ -10,7 +10,8 @@ import { enforceContentType, extractClientInfo } from "./validation";
 // ── CORS Config ──────────────────────────────────────────────────────────────
 
 const ALLOWED_ORIGINS = new Set([
-  "https://faaaaa.bittukr.com",
+  "https://propertyrush.net",
+  "https://www.propertyrush.net",
   "http://localhost:3000",
   "http://localhost:3001",
 ]);

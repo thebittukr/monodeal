@@ -1,6 +1,7 @@
 import { getRoom } from "@/lib/gameStore";
 import { sanitizeState } from "@/lib/gameEngine";
 import { securityCheck, errorResponse, handlePreflight, corsHeaders } from "@/lib/security/middleware";
+import { handleGameCompletion } from "@/lib/gameCompletion";
 import { NextResponse } from "next/server";
 
 export async function OPTIONS(req) {
@@ -23,6 +24,11 @@ export async function GET(req) {
   const room = await getRoom(roomId);
   if (!room) {
     return errorResponse(req, "Room not found", 404);
+  }
+
+  // If game ended, ensure results are persisted (idempotent safety net)
+  if (room.phase === "ended") {
+    handleGameCompletion(room).catch(() => {});
   }
 
   // Sanitize state — never leak other players' hidden cards

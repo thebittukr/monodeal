@@ -5,6 +5,7 @@ import { logAudit, logSecurityEvent } from "@/lib/security/audit";
 import { trackGameEvent } from "@/lib/fraud/eventTracker";
 import { checkAndMarkMoveId, withGameLock } from "@/lib/security/antiReplay";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { handleGameCompletion } from "@/lib/gameCompletion";
 
 export async function OPTIONS(req) {
   return handlePreflight(req);
@@ -64,7 +65,14 @@ export async function POST(req) {
 
       await setRoom(roomId, updated);
 
-      // 9. Track event for fraud detection (async, don't block response)
+      // 9. If game just ended, persist results to DB (async, idempotent)
+      if (updated.phase === "ended") {
+        handleGameCompletion(updated).catch(err =>
+          console.error("[playMove] Game completion error:", err.message)
+        );
+      }
+
+      // 10. Track event for fraud detection (async, don't block response)
       trackGameEvent({
         playerId,
         roomId,

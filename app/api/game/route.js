@@ -14,6 +14,7 @@ import {
   runBotTurns,
   sanitizeState,
 } from "@/lib/gameEngine";
+import { handleGameCompletion } from "@/lib/gameCompletion";
 import {
   findOrCreateRoom,
   registerOpenRoom,
@@ -68,6 +69,16 @@ export async function GET(req) {
     // Trigger delayed bot moves on each state poll
     runBotTurns(room);
     await setRoom(roomId, room);
+
+    // If bot turns ended the game, persist results
+    if (room.phase === "ended") {
+      handleGameCompletion(room).catch(() => {});
+    }
+  }
+
+  // Safety net: if game ended (by any means), ensure results are persisted
+  if (room.phase === "ended") {
+    handleGameCompletion(room).catch(() => {});
   }
 
   return ok(playerId ? sanitizeState(room, playerId) : room);
@@ -157,8 +168,13 @@ export async function POST(req) {
 
       const updated = processMove(room, playerId, move);
       // Don't run bot turns here — let the GET poll handle it with proper delays
-      // runBotTurns only runs on state polls, giving bots time to "think"
       await setRoom(roomId, updated);
+
+      // If the move ended the game, persist results
+      if (updated.phase === "ended") {
+        handleGameCompletion(updated).catch(() => {});
+      }
+
       return ok({ ok: true });
     }
 
