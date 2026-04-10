@@ -4,23 +4,30 @@ import { eq } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 
+function getBaseUrl(req: Request): string {
+  const headers = new Headers(req.headers);
+  const forwardedHost = headers.get("x-forwarded-host") || headers.get("host");
+  const forwardedProto = headers.get("x-forwarded-proto") || "https";
+  return process.env.NEXT_PUBLIC_APP_URL || `${forwardedProto}://${forwardedHost}`;
+}
+
 /**
  * Google OAuth callback — exchanges code for tokens, creates/finds user, sets session
  */
 export async function GET(req: Request) {
+  const baseUrl = getBaseUrl(req);
+
   try {
     const url = new URL(req.url);
     const code = url.searchParams.get("code");
     const error = url.searchParams.get("error");
 
     if (error || !code) {
-      return NextResponse.redirect(new URL("/login?error=google_denied", req.url));
+      return NextResponse.redirect(`${baseUrl}/login?error=google_denied`);
     }
 
     const clientId = process.env.GOOGLE_CLIENT_ID!;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
-    const reqUrl = new URL(req.url);
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${reqUrl.protocol}//${reqUrl.host}`;
     const redirectUri = `${baseUrl}/api/auth/google/callback`;
 
     // Exchange code for tokens
@@ -38,7 +45,7 @@ export async function GET(req: Request) {
 
     const tokens = await tokenRes.json();
     if (!tokens.access_token) {
-      return NextResponse.redirect(new URL("/login?error=google_token_failed", req.url));
+      return NextResponse.redirect(`${baseUrl}/login?error=google_token_failed`);
     }
 
     // Get user info from Google
@@ -48,7 +55,7 @@ export async function GET(req: Request) {
     const googleUser = await userInfoRes.json();
 
     if (!googleUser.email) {
-      return NextResponse.redirect(new URL("/login?error=google_no_email", req.url));
+      return NextResponse.redirect(`${baseUrl}/login?error=google_no_email`);
     }
 
     // Find or create user
@@ -56,7 +63,6 @@ export async function GET(req: Request) {
       .where(eq(schema.users.email, googleUser.email.toLowerCase())).limit(1);
 
     if (!user) {
-      // Create new user (random password since they use Google)
       const randomPassword = await bcrypt.hash(randomBytes(32).toString("hex"), 12);
       [user] = await db.insert(schema.users).values({
         email: googleUser.email.toLowerCase(),
@@ -72,7 +78,7 @@ export async function GET(req: Request) {
     await db.insert(schema.sessions).values({ userId: user.id, token, expiresAt });
 
     // Redirect to home with session cookie
-    const res = NextResponse.redirect(new URL("/", req.url));
+    const res = NextResponse.redirect(`${baseUrl}/`);
     res.cookies.set("session", token, {
       httpOnly: true,
       path: "/",
@@ -83,6 +89,6 @@ export async function GET(req: Request) {
     return res;
   } catch (err) {
     console.error("Google OAuth error:", err);
-    return NextResponse.redirect(new URL("/login?error=google_failed", req.url));
+    return NextResponse.redirect(`${baseUrl}/login?error=google_failed`);
   }
 }

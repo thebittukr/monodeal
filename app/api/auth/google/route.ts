@@ -6,9 +6,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Google OAuth not configured" }, { status: 500 });
   }
 
-  // Detect base URL from request (works on both localhost and Railway)
-  const url = new URL(req.url);
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${url.protocol}//${url.host}`;
+  // Detect base URL from forwarded headers (Railway/Vercel proxy) or fallback
+  const headers = new Headers(req.headers);
+  const forwardedHost = headers.get("x-forwarded-host") || headers.get("host");
+  const forwardedProto = headers.get("x-forwarded-proto") || "https";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${forwardedProto}://${forwardedHost}`;
   const redirectUri = `${baseUrl}/api/auth/google/callback`;
 
   const params = new URLSearchParams({
