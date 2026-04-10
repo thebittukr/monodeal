@@ -235,10 +235,24 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
           onConfirm={({ response }) => handleRespond(response)} onCancel={() => {}} />
       )}
 
-      {isWaiting && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-30 bg-black/90 border border-amber-500/30 rounded-2xl px-5 py-3 shadow-2xl text-center pointer-events-none backdrop-blur-md">
-          <div className="text-amber-400 text-[10px] font-bold uppercase tracking-widest">Waiting</div>
-          <div className="text-white text-xs font-bold mt-0.5">Opponent is responding...</div>
+      {isWaiting && state.pendingAction && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-30 bg-black/90 border border-amber-500/30 rounded-2xl px-5 py-3.5 shadow-2xl text-center pointer-events-none backdrop-blur-md max-w-xs">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-amber-400 text-[10px] font-bold uppercase tracking-widest">Waiting for response</span>
+          </div>
+          <div className="text-white text-xs font-bold">
+            {state.players[state.pendingAction.toIdx]?.name || "Opponent"} is deciding...
+          </div>
+          <div className="text-slate-500 text-[10px] mt-1">
+            {state.pendingAction.type === "rent" ? "Rent payment" :
+             state.pendingAction.type === "debtcollector" ? "Debt collection" :
+             state.pendingAction.type === "slydeal" ? "Sly Deal" :
+             state.pendingAction.type === "dealbreaker" ? "Deal Breaker" :
+             state.pendingAction.type === "forceddeal" ? "Forced Deal" :
+             state.pendingAction.type === "birthday" ? "Birthday" :
+             "Action"} — they can accept or block with Just Say No
+          </div>
         </div>
       )}
 
