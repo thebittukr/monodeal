@@ -126,7 +126,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-full flex flex-col relative">
-      {pendingRoom && <IntroOverlay onDone={handleIntroDone} />}
+      {pendingRoom && <IntroOverlay onDone={handleIntroDone} dateImageUrl={equippedDate?.thumbnailUrl} />}
       <CasinoBackground city={city} dateImageUrl={equippedDate?.thumbnailUrl} />
 
       <Nav />

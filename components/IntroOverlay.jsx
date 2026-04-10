@@ -15,7 +15,9 @@ const HYPE_LINES = [
   "I believe in you. Don't let me down!",
 ];
 
-export default function IntroOverlay({ onDone }) {
+const DEFAULT_DATE_IMG = "https://r2.propertyrush.net/dates/strawberry.gif";
+
+export default function IntroOverlay({ onDone, dateImageUrl }) {
   const [line] = useState(() => HYPE_LINES[Math.floor(Math.random() * HYPE_LINES.length)]);
   const [showBubble, setShowBubble] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -61,7 +63,7 @@ export default function IntroOverlay({ onDone }) {
 
       {/* Character image */}
       <div style={{ position: "relative", width: 250, flexShrink: 0 }}>
-        <img src="https://r2.propertyrush.net/dates/strawberry.gif" alt="" style={{ width: "100%" }} />
+        <img src={dateImageUrl || DEFAULT_DATE_IMG} alt="" style={{ width: "100%" }} />
 
         {/* Speech bubble */}
         <div style={{

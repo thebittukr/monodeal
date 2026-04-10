@@ -614,7 +614,7 @@ function WinnerOverlay({ winnerName, isMe, fairnessProof, onPlayAgain }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95">
       {/* 3D Models — dates celebrating */}
-      <div className="hidden sm:block absolute right-4 bottom-0 pointer-events-none" style={{maxHeight:"70vh",width:180}}><div style={{background:"white",borderRadius:16,overflow:"hidden"}}><img src="https://r2.propertyrush.net/dates/strawberry.gif" alt="" style={{width:"100%",display:"block"}} /></div></div>
+      <div className="hidden sm:block absolute right-4 bottom-0 pointer-events-none" style={{maxHeight:"70vh",width:180}}><div style={{background:"white",borderRadius:16,overflow:"hidden"}}><img src={equippedDate?.thumbnailUrl || "https://r2.propertyrush.net/dates/strawberry.gif"} alt="" style={{width:"100%",display:"block"}} /></div></div>
       
 
       {/* Result Card */}

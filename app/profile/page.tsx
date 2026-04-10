@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Nav from "@/components/Nav";
+import AvatarPicker from "@/components/AvatarPicker";
 
 interface ProfileData {
   user: { id: string; email: string; name: string };
-  profile: { username: string; countryCode: string | null; level: number; xp: number; equippedGirlfriendId: string | null } | null;
+  profile: { username: string; countryCode: string | null; level: number; xp: number; equippedGirlfriendId: string | null; avatarId: string | null } | null;
   rating: { eloRating: number; tier: string; gamesPlayed: number; gamesWon: number; winStreak: number; bestStreak: number; totalEarnings: number } | null;
   credits: { balance: number; locked: number } | null;
   equippedDate: { name: string; rarity: string; thumbnailUrl: string | null } | null;
@@ -161,6 +162,26 @@ export default function ProfilePage() {
           <div className="w-full h-2 rounded-full bg-black/30">
             <div className="h-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-500" style={{ width: `${Math.min(100, ((profile?.xp || 0) % 1000) / 10)}%` }} />
           </div>
+        </div>
+
+        {/* Avatar Selection */}
+        <div className="bg-slate-900/60 border border-white/5 rounded-xl p-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Your Avatar</span>
+            <a href="/partners" className="text-[10px] text-violet-400 hover:text-violet-300 transition">Change Date &rarr;</a>
+          </div>
+          <AvatarPicker
+            selected={data?.profile?.avatarId || null}
+            onSelect={(id: string) => {
+              // Save to profile + localStorage
+              localStorage.setItem("pr_avatar", id);
+              fetch("/api/profile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ avatarId: id }),
+              });
+            }}
+          />
         </div>
 
         {/* Actions */}

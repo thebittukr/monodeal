@@ -4,6 +4,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/auth/session";
 import { getRoom, setRoom, deleteRoom } from "@/lib/gameStore";
 import {
   createRoom,
@@ -99,14 +100,17 @@ export async function POST(req) {
       if (!playerName?.trim()) return err("playerName required", 400);
       const mode = body.mode || "free";
 
+      // Get logged-in user's DB ID (optional — guests play without it)
+      const sessionUser = await getSessionUser().catch(() => null);
+      const dbUserId = sessionUser?.id || null;
+
       // Try matchmaking — find an open room first
       const match = await findOrCreateRoom(mode);
       if (match?.action === "join" && match.roomId) {
         // Join existing open room
         const existingRoom = await getRoom(match.roomId);
         if (existingRoom && existingRoom.phase === "waiting" && existingRoom.players.length < (existingRoom.roomMaxPlayers ?? 4)) {
-          const { room: updated, playerId } = joinRoom(existingRoom, playerName.trim(), avatarId ?? 15, dateInfo || null);
-          // If room is now full, remove from queue
+          const { room: updated, playerId } = joinRoom(existingRoom, playerName.trim(), avatarId ?? 15, dateInfo || null, dbUserId);
           if (updated.players.length >= (updated.roomMaxPlayers ?? 4)) {
             removeFromQueue(match.roomId).catch(() => {});
           }
@@ -119,7 +123,7 @@ export async function POST(req) {
       let roomId;
       do { roomId = genRoomId(); } while (await getRoom(roomId));
 
-      const room = createRoom(roomId, playerName.trim(), body.maxPlayers ?? 4, avatarId ?? 15, dateInfo || null);
+      const room = createRoom(roomId, playerName.trim(), body.maxPlayers ?? 4, avatarId ?? 15, dateInfo || null, dbUserId);
       room._meta = { ...(room._meta || {}), mode };
       await setRoom(roomId, room);
 
@@ -140,7 +144,8 @@ export async function POST(req) {
       if (room.phase !== "waiting") return err("Game already in progress", 400);
       if (room.players.length >= (room.roomMaxPlayers ?? 4)) return err("Room is full", 400);
 
-      const { room: updated, playerId } = joinRoom(room, playerName.trim(), avatarId ?? 15, dateInfo || null);
+      const joinUser = await getSessionUser().catch(() => null);
+      const { room: updated, playerId } = joinRoom(room, playerName.trim(), avatarId ?? 15, dateInfo || null, joinUser?.id || null);
       await setRoom(code, updated);
       return ok({ playerId });
     }
