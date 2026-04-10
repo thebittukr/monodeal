@@ -446,6 +446,7 @@ export default function GameBoard({ state, myId, onMove, error, equippedDate }) 
                 const canPlay = isMyTurn && state.phase === "playing" && !state.pendingAction && playsLeft > 0;
                 return (
                   <div key={card.id}
+                    className="hand-card"
                     style={{
                       position: "absolute", bottom: 0, left: "50%", transformOrigin: "50% 130%",
                       transform: `translateX(calc(-50% + ${tx}px)) translateY(${ty - (isSelected ? 18 : 0)}px) rotateZ(${tilt}deg) rotateX(${isSelected ? -12 : 2}deg) scale(${isSelected ? 1.08 : 1})`,

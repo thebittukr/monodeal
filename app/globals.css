@@ -125,3 +125,16 @@ html, body {
 .animate-bounce-arrow {
   animation: bounceArrow 2.5s ease-in-out infinite;
 }
+
+/* ─── Performance: GPU-accelerated hand cards ────────────────────────────── */
+.hand-card {
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  contain: layout style paint;
+}
+
+/* Reduce paint for game board sections */
+.game-section {
+  contain: content;
+}

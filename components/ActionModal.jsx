@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, memo } from "react";
 import { COLORS, isSetComplete } from "@/lib/cards";
 import Card from "./Card";
 
@@ -23,7 +23,7 @@ const COLOR_DOT_HEX = {
  *  "discard"         — player selects cards to discard (hand > 7 at end of turn)
  *  "flip-wild"       — player picks new color for a wild card already on the table
  */
-export default function ActionModal({
+export default memo(function ActionModal({
   mode,
   card,
   myAssets = {},
@@ -156,7 +156,7 @@ export default function ActionModal({
       </div>
     </div>
   );
-}
+});
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 

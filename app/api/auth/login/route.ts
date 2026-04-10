@@ -39,7 +39,10 @@ export async function POST(req: Request) {
 
     await db.insert(schema.sessions).values({ userId: user.id, token, expiresAt });
 
-    const res = NextResponse.json({ user: { id: user.id, email: user.email, name: user.name } });
+    const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").filter(Boolean);
+    const isAdmin = adminEmails.includes(user.email);
+
+    const res = NextResponse.json({ user: { id: user.id, email: user.email, name: user.name }, isAdmin });
     res.cookies.set("session", token, { httpOnly: true, path: "/", expires: expiresAt, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
     return res;
   } catch (err: unknown) {

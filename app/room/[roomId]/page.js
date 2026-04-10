@@ -8,7 +8,7 @@ import { getMusicPlayer } from "@/lib/pixabayMusic";
 import { setNarratorEnabled } from "@/lib/narrator";
 import { useAuth } from "@/lib/useAuth";
 
-const POLL_INTERVAL       = 2000;  // 2 s — halves Redis usage, still fast enough
+const POLL_INTERVAL       = 1500;  // 1.5s — snappy updates, good balance with Redis
 const MAX_PLAYERS         = 4;
 const COLD_FAIL_MAX       = 15;    // redirect only if never connected after ~30 s
 const RECONNECT_THRESHOLD = 3;     // show "reconnecting" only after 3 consecutive fails
@@ -89,6 +89,7 @@ export default function RoomPage() {
     if (!myId) return;
     let interval;
 
+    const lastJsonRef = { current: "" };
     const poll = async () => {
       try {
         const res = await fetch(`/api/game?roomId=${roomId}&playerId=${myId}`, {
@@ -96,11 +97,15 @@ export default function RoomPage() {
         });
 
         if (res.ok) {
-          const data = await res.json();
+          const text = await res.text();
           everConnectedRef.current = true;
           failsRef.current = 0;
           setReconnecting(false);
-          setState(data);
+          // Skip re-render if state hasn't changed
+          if (text !== lastJsonRef.current) {
+            lastJsonRef.current = text;
+            setState(JSON.parse(text));
+          }
         } else {
           failsRef.current += 1;
           // Only show reconnecting UI after several consecutive failures (avoids flicker)
@@ -208,34 +213,38 @@ export default function RoomPage() {
   // WAITING ROOM
   // ─────────────────────────────────────────────────────────────────────────
 
-  // Auto-fill with bots after 60 seconds
-  const [waitSeconds, setWaitSeconds] = useState(0);
+  // Auto-fill with bots after 60 seconds (ref-based — no re-renders)
   const autoFillRef = useRef(false);
+  const waitTimerRef = useRef(null);
+  const waitSecondsRef = useRef(0);
+  const waitDisplayRef = useRef(null);
 
   useEffect(() => {
     if (!state || state.phase !== "waiting" || !myId) return;
     const isHost = state.hostId === myId;
     if (!isHost) return;
 
-    const timer = setInterval(() => {
-      setWaitSeconds(s => s + 1);
+    waitSecondsRef.current = 0;
+    waitTimerRef.current = setInterval(() => {
+      waitSecondsRef.current += 1;
+      // Update DOM directly — no setState re-render
+      if (waitDisplayRef.current) {
+        const secs = 60 - waitSecondsRef.current;
+        waitDisplayRef.current.textContent = secs > 0 ? `Auto-fill in ${secs}s` : "Filling...";
+      }
+      // Trigger auto-fill at 60 seconds
+      if (waitSecondsRef.current >= 60 && !autoFillRef.current) {
+        autoFillRef.current = true;
+        fetch("/api/game", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "fillBotsAndStart", roomId, playerId: myId }),
+        }).catch(() => {});
+      }
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [state?.phase, state?.hostId, myId]);
-
-  // Trigger auto-fill at 60 seconds
-  useEffect(() => {
-    if (waitSeconds >= 60 && state?.phase === "waiting" && state?.hostId === myId && !autoFillRef.current) {
-      autoFillRef.current = true;
-      // Fill remaining seats with bots and start
-      fetch("/api/game", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "fillBotsAndStart", roomId, playerId: myId }),
-      }).catch(() => {});
-    }
-  }, [waitSeconds]); // eslint-disable-line
+    return () => { if (waitTimerRef.current) clearInterval(waitTimerRef.current); };
+  }, [state?.phase, state?.hostId, myId, roomId]);
 
   if (!state || state.phase === "waiting") {
     const cap     = state?.roomMaxPlayers ?? MAX_PLAYERS;
@@ -314,11 +323,9 @@ export default function RoomPage() {
           <div className="flex items-center gap-2 justify-center">
             <div className={`w-2 h-2 rounded-full ${reconnecting ? "bg-yellow-400" : "bg-emerald-400"} animate-pulse`} />
             <span className="text-slate-400 text-xs">
-              {reconnecting ? "Reconnecting…" :
-               waitSeconds >= 60 ? "Starting game..." :
-               waitSeconds > 0 ? `Finding players... (${60 - waitSeconds}s)` :
-               `Waiting for ${cap} players to join`}
+              {reconnecting ? "Reconnecting…" : `Waiting for ${cap} players to join`}
             </span>
+            {state?.hostId === myId && <span ref={waitDisplayRef} className="text-slate-500 text-[10px] ml-1"></span>}
           </div>
 
           <div className="flex items-center gap-2 justify-center mt-3">

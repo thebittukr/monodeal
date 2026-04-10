@@ -33,16 +33,11 @@ export default function LoginPage() {
         return;
       }
 
-      // Small delay for cookie to set
-      await new Promise(r => setTimeout(r, 300));
-      // Check if admin
-      try {
-        const profile = await fetch("/api/profile").then(r => r.json());
-        if (profile?.isAdmin) {
-          window.location.href = "/admin";
-          return;
-        }
-      } catch {}
+      // Redirect admin directly — no extra fetch needed
+      if (data.isAdmin) {
+        window.location.href = "/admin";
+        return;
+      }
       window.location.href = "/";
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed");

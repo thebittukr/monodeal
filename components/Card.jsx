@@ -351,8 +351,10 @@ function HiddenCard({ small }) {
   );
 }
 
-// ── Main export ───────────────────────────────────────────────────────────────
-export default function Card({ card, onClick, selected, small, dimmed }) {
+// ── Main export (memoized — prevents re-renders when card data unchanged) ────
+import { memo } from "react";
+
+const Card = memo(function Card({ card, onClick, selected, small, dimmed }) {
   if (!card) return null;
 
   const props = { card, onClick, selected, small, dimmed };
@@ -372,4 +374,6 @@ export default function Card({ card, onClick, selected, small, dimmed }) {
 
   // action / rent
   return <ActionCard {...props} />;
-}
+});
+
+export default Card;
