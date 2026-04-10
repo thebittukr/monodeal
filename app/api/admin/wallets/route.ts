@@ -29,6 +29,23 @@ export async function GET() {
       .orderBy(desc(schema.wallets.createdAt))
       .limit(200);
 
+    // All users (even those without wallets) — for full overview
+    const allUsers = await db
+      .select({
+        userId: schema.users.id,
+        email: schema.users.email,
+        name: schema.users.name,
+        createdAt: schema.users.createdAt,
+        username: schema.userProfiles.username,
+        creditBalance: schema.credits.balance,
+        lockedBalance: schema.credits.lockedBalance,
+      })
+      .from(schema.users)
+      .leftJoin(schema.userProfiles, sql`${schema.users.id}::text = ${schema.userProfiles.userId}`)
+      .leftJoin(schema.credits, sql`${schema.users.id}::text = ${schema.credits.userId}`)
+      .orderBy(desc(schema.users.createdAt))
+      .limit(200);
+
     // Platform totals
     const [totals] = await db.select({
       totalWallets: sql<number>`COUNT(*)`,
@@ -43,9 +60,11 @@ export async function GET() {
 
     return NextResponse.json({
       wallets,
+      allUsers,
       summary: {
         ...totals,
         ...creditTotals,
+        totalUsers: allUsers.length,
       },
     });
   } catch (err: unknown) {

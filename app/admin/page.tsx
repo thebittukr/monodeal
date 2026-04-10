@@ -552,31 +552,67 @@ function WalletsTab({ onError }: { onError: (e: string) => void }) {
   }, []);
   if (!data) return <Loading />;
   const s = data.summary || {};
+  const [view, setView] = useState<"users" | "wallets">("users");
   return (
     <div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
+        <Stat label="Total Users" value={s.totalUsers || 0} />
         <Stat label="Total Wallets" value={s.totalWallets || 0} />
         <Stat label="Custodial" value={s.custodialCount || 0} />
-        <Stat label="External (MetaMask)" value={s.externalCount || 0} />
+        <Stat label="External" value={s.externalCount || 0} />
         <Stat label="Credits in Circulation" value={`${(s.totalCreditsInCirculation || 0).toLocaleString()} cr`} color="text-amber-400" />
       </div>
-      <div className="space-y-1">
-        {(data.wallets || []).map((w: any) => (
-          <div key={w.walletId} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/5 text-xs">
-            <div className={`px-2 py-0.5 rounded text-[9px] font-bold ${w.type === "custodial" ? "bg-violet-600/20 text-violet-400" : "bg-emerald-600/20 text-emerald-400"}`}>{w.type}</div>
-            <div className="flex-1 min-w-0">
-              <div className="text-white font-bold truncate">{w.username || w.userId?.slice(0, 12)}</div>
-              <div className="text-slate-600 font-mono text-[9px] truncate">{w.address}</div>
-            </div>
-            <div className="text-right shrink-0">
-              <div className="text-amber-400">{(w.creditBalance || 0).toLocaleString()} cr</div>
-              {(w.lockedBalance || 0) > 0 && <div className="text-yellow-500 text-[9px]">{w.lockedBalance} locked</div>}
-            </div>
-            <div className="text-slate-700 text-[9px]">{w.chain}</div>
-          </div>
-        ))}
-        {(data.wallets || []).length === 0 && <div className="text-slate-600 text-center py-8">No wallets yet</div>}
+
+      {/* View toggle */}
+      <div className="flex rounded-lg bg-black/30 p-0.5 mb-3 w-fit">
+        <button onClick={() => setView("users")} className={`px-3 py-1 rounded text-xs font-bold transition ${view === "users" ? "bg-violet-600 text-white" : "text-slate-500"}`}>All Users</button>
+        <button onClick={() => setView("wallets")} className={`px-3 py-1 rounded text-xs font-bold transition ${view === "wallets" ? "bg-violet-600 text-white" : "text-slate-500"}`}>Wallets Only</button>
       </div>
+
+      {view === "users" && (
+        <div className="space-y-1">
+          {(data.allUsers || []).map((u: any) => {
+            const hasWallet = (data.wallets || []).some((w: any) => w.userId === u.userId);
+            return (
+              <div key={u.userId} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/5 text-xs">
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${hasWallet ? "bg-emerald-400" : "bg-slate-700"}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-white font-bold truncate">{u.username || u.name || "—"}</div>
+                  <div className="text-slate-600 text-[9px] truncate">{u.email}</div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-amber-400">{(u.creditBalance || 0).toLocaleString()} cr</div>
+                  {(u.lockedBalance || 0) > 0 && <div className="text-yellow-500 text-[9px]">{u.lockedBalance} locked</div>}
+                </div>
+                <div className={`text-[9px] font-bold ${hasWallet ? "text-emerald-400" : "text-slate-700"}`}>
+                  {hasWallet ? "Wallet" : "No wallet"}
+                </div>
+              </div>
+            );
+          })}
+          {(data.allUsers || []).length === 0 && <div className="text-slate-600 text-center py-8">No users yet</div>}
+        </div>
+      )}
+
+      {view === "wallets" && (
+        <div className="space-y-1">
+          {(data.wallets || []).map((w: any) => (
+            <div key={w.walletId} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/5 text-xs">
+              <div className={`px-2 py-0.5 rounded text-[9px] font-bold ${w.type === "custodial" ? "bg-violet-600/20 text-violet-400" : "bg-emerald-600/20 text-emerald-400"}`}>{w.type}</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-white font-bold truncate">{w.username || w.userId?.slice(0, 12)}</div>
+                <div className="text-slate-600 font-mono text-[9px] truncate">{w.address}</div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="text-amber-400">{(w.creditBalance || 0).toLocaleString()} cr</div>
+                {(w.lockedBalance || 0) > 0 && <div className="text-yellow-500 text-[9px]">{w.lockedBalance} locked</div>}
+              </div>
+              <div className="text-slate-700 text-[9px]">{w.chain}</div>
+            </div>
+          ))}
+          {(data.wallets || []).length === 0 && <div className="text-slate-600 text-center py-8">No wallets yet</div>}
+        </div>
+      )}
     </div>
   );
 }
