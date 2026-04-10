@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-type Tab = "overview" | "players" | "transactions" | "wallets" | "credits-usage" | "games" | "fraud" | "dates" | "bots";
+type Tab = "overview" | "players" | "transactions" | "wallets" | "credits-usage" | "games" | "fraud" | "dates" | "bots" | "avatars";
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("overview");
@@ -81,6 +81,7 @@ export default function AdminDashboard() {
         {tab === "fraud" && <FraudTab onError={setError} />}
         {tab === "dates" && <DatesTab onError={setError} />}
         {tab === "bots" && <BotsTab onError={setError} />}
+        {tab === "avatars" && <AvatarsTab onError={setError} />}
       </div>
     </div>
   );
@@ -673,6 +674,108 @@ function Sel({ label, value, set, opts }: { label: string; value: string; set: (
       <select value={value} onChange={e => set(e.target.value)} className="w-full bg-black/30 border border-white/8 rounded px-2 py-1.5 text-xs text-white focus:border-violet-500 focus:outline-none">
         {opts.map(o => <option key={o} value={o} className="bg-slate-900">{o}</option>)}
       </select>
+    </div>
+  );
+}
+
+// ── Avatars Tab ──────────────────────────────────────────────────────────────
+
+function AvatarsTab({ onError }: { onError: (e: string) => void }) {
+  const [avatars, setAvatars] = useState<any[]>([]);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => { load(); }, []);
+  function load() {
+    fetch("/api/admin/avatars").then(r => r.json()).then(d => d.error ? onError(d.error) : setAvatars(d.avatars || []));
+  }
+
+  function startEdit(a: any) {
+    setEditId(a.id);
+    setEditForm({ name: a.name, category: a.category, isFree: a.isFree, priceCredits: a.priceCredits, imageUrl: a.imageUrl });
+  }
+
+  async function saveEdit() {
+    if (!editId) return;
+    await fetch("/api/admin/avatars", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "update", id: editId, ...editForm }),
+    });
+    setEditId(null); setMsg("Saved!"); setTimeout(() => setMsg(""), 2000); load();
+  }
+
+  async function toggleFree(a: any) {
+    await fetch("/api/admin/avatars", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: a.isFree ? "set_paid" : "set_free", id: a.id, priceCredits: 100 }),
+    });
+    load();
+  }
+
+  async function del(id: string) {
+    if (!confirm("Delete this avatar?")) return;
+    await fetch("/api/admin/avatars", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", id }),
+    });
+    load();
+  }
+
+  const freeCount = avatars.filter(a => a.isFree).length;
+  const paidCount = avatars.filter(a => !a.isFree).length;
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-xs text-slate-500">
+          {avatars.length} avatars ({freeCount} free, {paidCount} paid)
+        </span>
+        {msg && <span className="text-emerald-400 text-xs">{msg}</span>}
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+        {avatars.map((a: any) => (
+          <div key={a.id} className={`rounded-xl border overflow-hidden ${editId === a.id ? "border-violet-500/50 bg-violet-900/10" : "border-white/5 bg-white/[0.02]"}`}>
+            {editId === a.id ? (
+              /* Edit mode */
+              <div className="p-2 space-y-1.5">
+                <img src={a.imageUrl} alt="" className="w-16 h-16 rounded-lg object-cover mx-auto" />
+                <Inp label="Name" value={editForm.name} set={v => setEditForm({...editForm, name: v})} />
+                <Sel label="Category" value={editForm.category} set={v => setEditForm({...editForm, category: v})} opts={["casino","action","fantasy","tech","style"]} />
+                <Inp label="Price (credits)" value={String(editForm.priceCredits)} set={v => setEditForm({...editForm, priceCredits: parseInt(v)||0})} />
+                <Inp label="Image URL" value={editForm.imageUrl} set={v => setEditForm({...editForm, imageUrl: v})} />
+                <div className="flex gap-1">
+                  <button onClick={() => setEditForm({...editForm, isFree: !editForm.isFree})}
+                    className={`px-2 py-0.5 rounded text-[8px] font-bold ${editForm.isFree ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-500"}`}>
+                    {editForm.isFree ? "FREE" : "Paid"}
+                  </button>
+                  <button onClick={saveEdit} className="px-2 py-0.5 rounded bg-emerald-600 text-white text-[8px] font-bold">Save</button>
+                  <button onClick={() => setEditId(null)} className="px-2 py-0.5 rounded bg-slate-700 text-slate-300 text-[8px] font-bold">X</button>
+                </div>
+              </div>
+            ) : (
+              /* View mode */
+              <div className="p-2 text-center">
+                <img src={a.imageUrl} alt={a.name} className="w-14 h-14 rounded-xl object-cover mx-auto mb-1.5" />
+                <div className="text-white text-[10px] font-bold truncate">{a.name}</div>
+                <div className="text-slate-600 text-[9px]">{a.category}</div>
+                <div className={`text-[9px] font-bold mt-0.5 ${a.isFree ? "text-emerald-400" : "text-amber-400"}`}>
+                  {a.isFree ? "FREE" : `${a.priceCredits} cr`}
+                </div>
+                <div className="flex gap-1 mt-1.5 justify-center">
+                  <button onClick={() => toggleFree(a)}
+                    className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${a.isFree ? "bg-amber-600/20 text-amber-400" : "bg-emerald-600/20 text-emerald-400"}`}>
+                    {a.isFree ? "→ Paid" : "→ Free"}
+                  </button>
+                  <button onClick={() => startEdit(a)} className="px-1.5 py-0.5 rounded bg-violet-600/20 text-violet-400 text-[8px]">Edit</button>
+                  <button onClick={() => del(a.id)} className="px-1.5 py-0.5 rounded bg-red-900/20 text-red-500 text-[8px]">Del</button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
