@@ -4,20 +4,8 @@
  * Score determines enforcement level.
  */
 
-import { Redis } from "@upstash/redis";
+import { getRedis } from "../redis";
 import type { FraudSignal } from "./behaviorDetection";
-
-let _redis: Redis | null = null;
-function getRedis(): Redis | null {
-  if (_redis) return _redis;
-  if (
-    process.env.UPSTASH_REDIS_REST_URL &&
-    process.env.UPSTASH_REDIS_REST_TOKEN
-  ) {
-    _redis = Redis.fromEnv();
-  }
-  return _redis;
-}
 
 // ── Risk Levels ──────────────────────────────────────────────────────────────
 

@@ -4,19 +4,7 @@
  * Uses Redis SET with TTL for fast lookups.
  */
 
-import { Redis } from "@upstash/redis";
-
-let _redis: Redis | null = null;
-function getRedis(): Redis | null {
-  if (_redis) return _redis;
-  if (
-    process.env.UPSTASH_REDIS_REST_URL &&
-    process.env.UPSTASH_REDIS_REST_TOKEN
-  ) {
-    _redis = Redis.fromEnv();
-  }
-  return _redis;
-}
+import { getRedis } from "../redis";
 
 // In-memory fallback for local dev
 const localUsedMoveIds = new Set<string>();

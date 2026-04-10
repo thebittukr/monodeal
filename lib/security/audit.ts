@@ -4,19 +4,7 @@
  * Stored in Redis (recent) + DB (permanent).
  */
 
-import { Redis } from "@upstash/redis";
-
-let _redis: Redis | null = null;
-function getRedis(): Redis | null {
-  if (_redis) return _redis;
-  if (
-    process.env.UPSTASH_REDIS_REST_URL &&
-    process.env.UPSTASH_REDIS_REST_TOKEN
-  ) {
-    _redis = Redis.fromEnv();
-  }
-  return _redis;
-}
+import { getRedis } from "../redis";
 
 // ── Audit Entry ──────────────────────────────────────────────────────────────
 
