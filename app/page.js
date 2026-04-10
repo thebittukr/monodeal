@@ -500,7 +500,10 @@ export default function HomePage() {
           <MobileNavBtn href="/cards" icon="🃏" label="Cards" />
           <MobileNavBtn href="/credits" icon="💰" label="Credits" />
           <MobileNavBtn href="/leaderboard" icon="🏆" label="Ranks" />
-          <MobileNavBtn href="/login" icon="👤" label="Sign In" />
+          {isLoggedIn
+            ? <MobileNavBtn href="/profile" icon="👤" label="Profile" />
+            : <MobileNavBtn href="/login" icon="👤" label="Sign In" />
+          }
         </div>
       </div>
     </div>
