@@ -44,10 +44,10 @@ export default function LoginPage() {
     }
   }
 
-  async function handleGoogleLogin() {
+  function handleGoogleLogin() {
     setError("");
     try {
-      await authClient.signIn.social({ provider: "google" });
+      window.location.href = "/api/auth/google";
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Google login failed");
     }

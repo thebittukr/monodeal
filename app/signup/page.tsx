@@ -24,10 +24,10 @@ export default function SignupPage() {
     }
   }
 
-  async function handleGoogleSignup() {
+  function handleGoogleSignup() {
     setError("");
     try {
-      await authClient.signIn.social({ provider: "google" });
+      window.location.href = "/api/auth/google";
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Google signup failed");
     }
