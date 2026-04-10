@@ -98,6 +98,9 @@ export async function POST(req: Request) {
     });
   } catch (err: any) {
     console.error("[Withdrawal] Error:", err);
-    return NextResponse.json({ error: err.message || "Withdrawal failed" }, { status: 400 });
+    // Don't leak internal errors — only show safe messages
+    const safeMessages = ["Invalid address", "Minimum withdrawal", "Insufficient credits", "New accounts must wait", "2FA code required", "Invalid 2FA code", "Withdrawal system not configured"];
+    const msg = safeMessages.find(m => err.message?.includes(m)) || "Withdrawal failed. Please try again.";
+    return NextResponse.json({ error: msg }, { status: 400 });
   }
 }

@@ -8,6 +8,7 @@ import { db, schema } from "@/lib/db";
 import { eq, and, gt } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { verifyTotpCode, verifyRecoveryCode } from "@/lib/auth/totp";
+import { getRedis } from "@/lib/redis";
 
 export async function POST(req: Request) {
   try {
@@ -15,6 +16,17 @@ export async function POST(req: Request) {
 
     if (!challengeToken || !code) {
       return NextResponse.json({ error: "Challenge token and code are required" }, { status: 400 });
+    }
+
+    // Rate limit: max 5 attempts per challenge token
+    const redis = getRedis();
+    if (redis) {
+      const rlKey = `2fa_attempts:${challengeToken}`;
+      const attempts = parseInt(await redis.get(rlKey) || "0");
+      if (attempts >= 5) {
+        return NextResponse.json({ error: "Too many attempts. Please log in again." }, { status: 429 });
+      }
+      await redis.set(rlKey, String(attempts + 1), { ex: 300 }); // 5 min TTL
     }
 
     // Find valid challenge

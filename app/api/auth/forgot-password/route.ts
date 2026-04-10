@@ -9,6 +9,7 @@ import { db, schema } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { getRedis } from "@/lib/redis";
 
 function getBaseUrl(req: Request): string {
   const headers = new Headers(req.headers);
@@ -22,6 +23,18 @@ export async function POST(req: Request) {
     const { email } = await req.json();
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    }
+
+    // Rate limit: max 3 reset emails per email per 15 minutes
+    const redis = getRedis();
+    if (redis) {
+      const rlKey = `reset_rl:${email.toLowerCase().trim()}`;
+      const count = parseInt(await redis.get(rlKey) || "0");
+      if (count >= 3) {
+        // Still return success to prevent email enumeration
+        return NextResponse.json({ ok: true, message: "If an account exists with that email, we've sent a password reset link." });
+      }
+      await redis.set(rlKey, String(count + 1), { ex: 900 }); // 15 min
     }
 
     const baseUrl = getBaseUrl(req);

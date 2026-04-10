@@ -3,13 +3,26 @@ import { db, schema } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
+import { getRedis } from "@/lib/redis";
 
 export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
     if (!email || !password) return NextResponse.json({ error: "Email and password required" }, { status: 400 });
 
-    const [user] = await db.select().from(schema.users).where(eq(schema.users.email, email.toLowerCase())).limit(1);
+    // Rate limit: max 10 login attempts per email per 15 minutes
+    const redis = getRedis();
+    const emailLower = email.toLowerCase();
+    if (redis) {
+      const rlKey = `login_rl:${emailLower}`;
+      const attempts = parseInt(await redis.get(rlKey) || "0");
+      if (attempts >= 10) {
+        return NextResponse.json({ error: "Too many login attempts. Try again in 15 minutes." }, { status: 429 });
+      }
+      await redis.set(rlKey, String(attempts + 1), { ex: 900 });
+    }
+
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.email, emailLower)).limit(1);
     if (!user) return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
 
     const valid = await bcrypt.compare(password, user.passwordHash);

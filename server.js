@@ -41,16 +41,19 @@ app.prepare().then(() => {
 
   // ── Connection handling ────────────────────────────────────────────
   io.on("connection", (socket) => {
-    console.log(`[WS] Connected: ${socket.id}`);
+    // Validate: must provide a playerId to join a room.
+    // Players get their ID from the game creation/join API (server-issued).
+    // WebSocket only receives sanitized state — no game logic is executed here.
 
     // Client joins a game room
     socket.on("join-room", ({ roomId, playerId }) => {
       if (!roomId || !playerId) return;
+      // Limit rooms per socket to prevent abuse
+      if (socket.rooms.size > 3) return; // 1 default + max 2 game rooms
       const channel = `room:${roomId}`;
       socket.join(channel);
       socket.data.roomId = roomId;
       socket.data.playerId = playerId;
-      console.log(`[WS] ${playerId} joined ${channel}`);
     });
 
     // Client leaves a room

@@ -47,7 +47,9 @@ export function getExplorerUrl() {
   return getChainConfig().explorer;
 }
 
-const IS_MOCK = process.env.MOCK_WALLET === "true";
+// Mock mode: ONLY allowed when both MOCK_WALLET=true AND NEXT_PUBLIC_CHAIN=amoy (testnet)
+// This prevents accidentally enabling mock mode on mainnet
+const IS_MOCK = process.env.MOCK_WALLET === "true" && (process.env.NEXT_PUBLIC_CHAIN || "amoy") === "amoy";
 
 // ── ERC-20 ABI (minimal) ───────────────────────────────────────────────────
 
