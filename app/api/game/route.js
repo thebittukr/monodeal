@@ -131,7 +131,7 @@ export async function POST(req) {
 
     // ── joinRoom ──────────────────────────────────────────────────────────────
     case "joinRoom": {
-      const { roomId, playerName, avatarId } = body;
+      const { roomId, playerName, avatarId, dateInfo } = body;
       if (!roomId?.trim() || !playerName?.trim()) return err("roomId and playerName required", 400);
 
       const code = roomId.trim().toUpperCase();
@@ -140,7 +140,7 @@ export async function POST(req) {
       if (room.phase !== "waiting") return err("Game already in progress", 400);
       if (room.players.length >= (room.roomMaxPlayers ?? 4)) return err("Room is full", 400);
 
-      const { room: updated, playerId } = joinRoom(room, playerName.trim(), avatarId ?? 15);
+      const { room: updated, playerId } = joinRoom(room, playerName.trim(), avatarId ?? 15, dateInfo || null);
       await setRoom(code, updated);
       return ok({ playerId });
     }

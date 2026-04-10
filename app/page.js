@@ -104,7 +104,7 @@ export default function HomePage() {
     try {
       const res = await fetch("/api/game", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "joinRoom", roomId: code, playerName: name.trim(), avatarId }),
+        body: JSON.stringify({ action: "joinRoom", roomId: code, playerName: name.trim(), avatarId, dateInfo: equippedDate ? { name: equippedDate.name, rarity: equippedDate.rarity, thumbnailUrl: equippedDate.thumbnailUrl } : null }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
