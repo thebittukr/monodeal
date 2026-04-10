@@ -35,6 +35,7 @@ export default function WalletPage() {
       setWallet(w);
       setBalance(c.balance);
       setHas2FA(p?.user?.totpEnabled || false);
+      if (w?.external?.address) setWithdrawAddress(w.external.address);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -99,8 +100,10 @@ export default function WalletPage() {
     const credits = parseInt(withdrawAmount);
     if (isNaN(credits) || credits < 500) { showMsg("Minimum 500 credits (5 USDT)", "error"); return; }
 
-    const toAddr = wallet?.external?.address;
-    if (!toAddr) { showMsg("Connect an external wallet first", "error"); return; }
+    const toAddr = withdrawAddress.trim();
+    if (!toAddr || !toAddr.startsWith("0x") || toAddr.length !== 42) {
+      showMsg("Enter a valid Polygon wallet address (0x...)", "error"); return;
+    }
 
     if (has2FA && !totpCode) { setNeeds2FA(true); showMsg("Enter your 2FA code to proceed", "info"); return; }
 
@@ -284,51 +287,57 @@ export default function WalletPage() {
           <div className="bg-slate-900/60 border border-white/5 rounded-xl p-5">
             <h2 className="text-sm font-bold mb-3">Withdraw Credits</h2>
             <p className="text-slate-500 text-xs mb-4">
-              Min: 500 credits (5 USDT). Sent as USDT on Polygon to your external wallet.
-              {has2FA && <span className="text-violet-400 ml-1">2FA verification required.</span>}
+              Min: 500 credits (5 USDT). Sent as USDT on Polygon.
+              {has2FA && <span className="text-violet-400 ml-1"> 2FA required.</span>}
             </p>
 
-            {!wallet?.external ? (
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 text-xs text-amber-400">
-                Connect an external wallet first (Deposit tab → External Wallet section).
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div>
-                  <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-1">Withdraw To</label>
-                  <p className="font-mono text-xs text-emerald-300 bg-black/20 rounded-lg px-3 py-2 break-all">{wallet.external.address}</p>
-                </div>
-
-                <div>
-                  <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-1">Amount (Credits)</label>
-                  <input type="number" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)}
-                    placeholder="500" min="500"
-                    className="w-full bg-black/30 border border-white/8 rounded-lg px-3 py-2.5 text-white text-sm focus:border-violet-500 focus:outline-none" />
-                  {withdrawAmount && parseInt(withdrawAmount) >= 500 && (
-                    <p className="text-slate-500 text-[10px] mt-1">= {(parseInt(withdrawAmount) / 100).toFixed(2)} USDT</p>
-                  )}
-                </div>
-
-                {/* 2FA Code (if needed) */}
-                {(has2FA || needs2FA) && (
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-1">2FA Code</label>
-                    <input type="text" inputMode="numeric" value={totpCode} onChange={e => setTotpCode(e.target.value)}
-                      placeholder="6-digit code" maxLength={9}
-                      className="w-full bg-black/30 border border-white/8 rounded-lg px-3 py-2.5 text-white text-sm font-mono tracking-widest text-center focus:border-violet-500 focus:outline-none" />
-                  </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-1">Withdraw To (Polygon Address)</label>
+                <input
+                  type="text" value={withdrawAddress}
+                  onChange={e => setWithdrawAddress(e.target.value)}
+                  placeholder="0x..."
+                  className="w-full bg-black/30 border border-white/8 rounded-lg px-3 py-2.5 text-white text-sm font-mono focus:border-violet-500 focus:outline-none"
+                />
+                {wallet?.external?.address && withdrawAddress !== wallet.external.address && (
+                  <button
+                    onClick={() => setWithdrawAddress(wallet.external.address)}
+                    className="text-[9px] text-violet-400 hover:text-violet-300 mt-1 transition"
+                  >
+                    Use saved wallet: {wallet.external.address.slice(0, 8)}...{wallet.external.address.slice(-4)}
+                  </button>
                 )}
-
-                <button onClick={handleWithdraw} disabled={withdrawing || !withdrawAmount}
-                  className="w-full py-3 rounded-lg bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold text-sm transition">
-                  {withdrawing ? "Processing..." : "Withdraw USDT"}
-                </button>
-
-                <p className="text-slate-700 text-[10px]">
-                  New accounts must wait 24 hours before first withdrawal. All withdrawals are final.
-                </p>
               </div>
-            )}
+
+              <div>
+                <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-1">Amount (Credits)</label>
+                <input type="number" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)}
+                  placeholder="500" min="500"
+                  className="w-full bg-black/30 border border-white/8 rounded-lg px-3 py-2.5 text-white text-sm focus:border-violet-500 focus:outline-none" />
+                {withdrawAmount && parseInt(withdrawAmount) >= 500 && (
+                  <p className="text-slate-500 text-[10px] mt-1">= {(parseInt(withdrawAmount) / 100).toFixed(2)} USDT</p>
+                )}
+              </div>
+
+              {(has2FA || needs2FA) && (
+                <div>
+                  <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-1">2FA Code</label>
+                  <input type="text" inputMode="numeric" value={totpCode} onChange={e => setTotpCode(e.target.value)}
+                    placeholder="6-digit code" maxLength={9}
+                    className="w-full bg-black/30 border border-white/8 rounded-lg px-3 py-2.5 text-white text-sm font-mono tracking-widest text-center focus:border-violet-500 focus:outline-none" />
+                </div>
+              )}
+
+              <button onClick={handleWithdraw} disabled={withdrawing || !withdrawAmount || !withdrawAddress}
+                className="w-full py-3 rounded-lg bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold text-sm transition">
+                {withdrawing ? "Processing..." : "Withdraw USDT"}
+              </button>
+
+              <p className="text-slate-700 text-[10px]">
+                New accounts must wait 24 hours. All withdrawals are final. Double-check the address.
+              </p>
+            </div>
           </div>
         )}
 
