@@ -8,6 +8,7 @@ import { db, schema } from "@/lib/db";
 import { eq, sql, and } from "drizzle-orm";
 import { getSessionUser } from "@/lib/auth/session";
 import { debitUser } from "@/lib/wallet/credits";
+import { cached, invalidateCache } from "@/lib/cache";
 
 // ── GET: Browse shop or my collection ────────────────────────────────────────
 
@@ -48,33 +49,35 @@ export async function GET(req: Request) {
     return NextResponse.json({ girlfriends: owned });
   }
 
-  // Default: shop view (public)
-  const all = await db
-    .select({
-      id: schema.girlfriends.id,
-      name: schema.girlfriends.name,
-      rarity: schema.girlfriends.rarity,
-      modelUrl: schema.girlfriends.modelUrl,
-      thumbnailUrl: schema.girlfriends.thumbnailUrl,
-      priceCredits: schema.girlfriends.priceCredits,
-      style: schema.girlfriends.style,
-      gender: schema.girlfriends.gender,
-      isStarter: schema.girlfriends.isStarter,
-      description: schema.girlfriends.description,
-      personality: schema.girlfriends.personality,
-      backstory: schema.girlfriends.backstory,
-      totalEquipped: schema.girlfriends.totalEquipped,
-    })
-    .from(schema.girlfriends)
-    .orderBy(sql`
-      CASE WHEN is_starter = true THEN 0 ELSE 1 END,
-      CASE rarity
-        WHEN 'common' THEN 1
-        WHEN 'rare' THEN 2
-        WHEN 'epic' THEN 3
-        WHEN 'legendary' THEN 4
-      END
-    `);
+  // Default: shop view (public) — cached 5 min
+  const all = await cached("girlfriends:shop", 300_000, async () => {
+    return db
+      .select({
+        id: schema.girlfriends.id,
+        name: schema.girlfriends.name,
+        rarity: schema.girlfriends.rarity,
+        modelUrl: schema.girlfriends.modelUrl,
+        thumbnailUrl: schema.girlfriends.thumbnailUrl,
+        priceCredits: schema.girlfriends.priceCredits,
+        style: schema.girlfriends.style,
+        gender: schema.girlfriends.gender,
+        isStarter: schema.girlfriends.isStarter,
+        description: schema.girlfriends.description,
+        personality: schema.girlfriends.personality,
+        backstory: schema.girlfriends.backstory,
+        totalEquipped: schema.girlfriends.totalEquipped,
+      })
+      .from(schema.girlfriends)
+      .orderBy(sql`
+        CASE WHEN is_starter = true THEN 0 ELSE 1 END,
+        CASE rarity
+          WHEN 'common' THEN 1
+          WHEN 'rare' THEN 2
+          WHEN 'epic' THEN 3
+          WHEN 'legendary' THEN 4
+        END
+      `);
+  });
 
   return NextResponse.json({ girlfriends: all });
 }
@@ -136,6 +139,7 @@ export async function POST(req: Request) {
         .set({ totalEquipped: sql`${schema.girlfriends.totalEquipped} + 1` })
         .where(eq(schema.girlfriends.id, girlfriendId));
 
+      invalidateCache("girlfriends:shop"); // bust cache on purchase
       return NextResponse.json({ ok: true, message: `${gf.name} is yours!` });
     }
 
