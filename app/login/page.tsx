@@ -156,10 +156,15 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <p className="text-slate-600 text-center text-xs mt-5">
-              New player?{" "}
-              <a href="/signup" className="text-violet-400 hover:text-violet-300 transition">Create account</a>
-            </p>
+            <div className="flex items-center justify-between mt-5">
+              <a href="/forgot-password" className="text-xs text-slate-500 hover:text-violet-400 transition">
+                Forgot password?
+              </a>
+              <p className="text-slate-600 text-xs">
+                New?{" "}
+                <a href="/signup" className="text-violet-400 hover:text-violet-300 transition">Create account</a>
+              </p>
+            </div>
           </div>
 
           <a href="/" className="block text-center text-slate-600 hover:text-slate-400 text-xs mt-4 transition">

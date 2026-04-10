@@ -114,6 +114,21 @@ export const sessions = pgTable(
   (t) => [index("sessions_token_idx").on(t.token)]
 );
 
+// ── Password Reset Tokens ───────────────────────────────────────────────────
+
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    token: text("token").notNull().unique(),
+    expiresAt: timestamp("expires_at").notNull(),
+    usedAt: timestamp("used_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("reset_token_idx").on(t.token)]
+);
+
 // ── Two-Factor Challenges (temporary login state) ───────────────────────────
 
 export const twoFactorChallenges = pgTable(
